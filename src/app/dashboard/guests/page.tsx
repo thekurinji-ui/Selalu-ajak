@@ -103,6 +103,7 @@ export default async function GuestsPage({
                   <th className="px-4 py-3">Kategori</th>
                   <th className="px-4 py-3">RSVP</th>
                   <th className="px-4 py-3">Check-in</th>
+                  <th className="px-4 py-3">QR</th>
                 </tr>
               </thead>
               <tbody>
@@ -115,11 +116,21 @@ export default async function GuestsPage({
                       <Badge status={guest.rsvp?.status ?? "BELUM_MERESPONS"} />
                     </td>
                     <td className="px-4 py-3 text-slate-600">{guest.checkIn ? "Sudah Check-in" : "-"}</td>
+                    <td className="px-4 py-3">
+                      <a
+                        href={`/api/guests/${guest.id}/qrcode`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-forest-600 hover:underline"
+                      >
+                        Lihat QR
+                      </a>
+                    </td>
                   </tr>
                 ))}
                 {guests.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                    <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                       Belum ada tamu. Tambahkan tamu pertama Anda di atas.
                     </td>
                   </tr>
