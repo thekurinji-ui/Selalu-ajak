@@ -87,6 +87,12 @@ enum InvoiceStatus {
   REFUNDED
 }
 
+enum TemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 // ---------------------------------------------------------------------------
 // Account & Auth (BAB 7 & 19)
 // ---------------------------------------------------------------------------
@@ -167,11 +173,13 @@ model Event {
   city          String?
   description   String?     @db.Text
   coverImageUrl String?     @map("cover_image_url")
+  templateId    String?     @map("template_id")
   theme         String      @default("elegant")
   primaryColor  String?     @map("primary_color")
   musicUrl      String?     @map("music_url")
 
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template        InvitationTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
   invitationPage  InvitationPage?
   guests          Guest[]
   digitalGift     DigitalGift?
@@ -184,6 +192,7 @@ model Event {
 
   @@index([userId])
   @@index([status])
+  @@index([templateId])
   @@map("events")
 }
 
@@ -207,6 +216,36 @@ model InvitationPage {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("invitation_pages")
+}
+
+// Katalog template undangan yang dikelola Admin/Content Manager. Satu
+// template = satu struktur section default yang bisa dipakai user sebagai
+// starting point saat membuat InvitationPage.
+model InvitationTemplate {
+  id              String         @id @default(uuid())
+  name            String
+  slug            String         @unique
+  description     String?        @db.Text
+  eventType       EventType?     @map("event_type") // null = cocok untuk semua jenis acara
+  thumbnailUrl    String         @map("thumbnail_url")
+  previewImages   String[]       @default([]) @map("preview_images")
+  defaultSections Json           @map("default_sections") // struktur section default (cover, story, gallery, dst)
+  primaryColor    String?        @map("primary_color")
+  isPremium       Boolean        @default(false) @map("is_premium")
+  status          TemplateStatus @default(DRAFT)
+  sortOrder       Int            @default(0) @map("sort_order")
+  usageCount      Int            @default(0) @map("usage_count")
+
+  createdById String? @map("created_by_id")
+
+  events Event[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([eventType])
+  @@map("invitation_templates")
 }
 
 // ---------------------------------------------------------------------------
