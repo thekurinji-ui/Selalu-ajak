@@ -14,6 +14,7 @@ import {
   BarChart3,
   Settings,
   CreditCard,
+  ShieldCheck,
 } from "lucide-react";
 
 // BAB 8.3 — Struktur Dashboard
@@ -30,7 +31,7 @@ const navItems = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -59,6 +60,15 @@ export function Sidebar() {
             </Link>
           );
         })}
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="mt-4 flex items-center gap-3 rounded-md border-t border-champagne-100 px-3 pt-4 text-sm font-medium text-champagne-700 hover:text-forest-700"
+          >
+            <ShieldCheck size={18} />
+            Admin Console
+          </Link>
+        )}
       </nav>
     </aside>
   );
