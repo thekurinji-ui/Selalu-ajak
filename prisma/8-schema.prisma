@@ -1,0 +1,407 @@
+// Selalu Ajak Product Blueprint v2.0 — BAB 24: Database Design
+// PostgreSQL + Prisma ORM. Setiap acara (Event) menjadi pusat relasi data.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  USER
+  ADMIN
+  SUPPORT
+  FINANCE
+  CONTENT_MANAGER
+  DEVELOPER
+}
+
+enum EventType {
+  PERNIKAHAN
+  LAMARAN
+  TUNANGAN
+  ULANG_TAHUN
+  WISUDA
+  AQIQAH
+  TASYAKURAN
+  SEMINAR
+  WORKSHOP
+  GATHERING
+  CORPORATE_EVENT
+  PELUNCURAN_PRODUK
+  KONFERENSI
+  REUNI
+  KOMUNITAS
+  LAINNYA
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RsvpStatus {
+  BELUM_MERESPONS
+  AKAN_HADIR
+  TIDAK_HADIR
+}
+
+enum CheckinMethod {
+  QR
+  MANUAL
+}
+
+enum CampaignStatus {
+  MENUNGGU
+  DIPROSES
+  TERKIRIM
+  GAGAL
+}
+
+enum Plan {
+  BASIC
+  PREMIUM
+  ULTIMATE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  REFUNDED
+}
+
+// ---------------------------------------------------------------------------
+// Account & Auth (BAB 7 & 19)
+// ---------------------------------------------------------------------------
+
+model User {
+  id                  String               @id @default(uuid())
+  name                String
+  email               String               @unique
+  emailVerified       DateTime?            @map("email_verified")
+  passwordHash        String?              @map("password_hash")
+  avatarUrl           String?              @map("avatar_url")
+  image               String?
+  whatsappNumber      String?              @map("whatsapp_number")
+  language            String               @default("id")
+  timezone            String               @default("Asia/Jakarta")
+  role                Role                 @default(USER)
+  events              Event[]
+  subscription        Subscription?
+  invoices            Invoice[]
+  notifications       Notification[]
+  accounts            Account[]
+  auditLogs           AuditLog[]
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+// Wajib untuk NextAuth (PrismaAdapter) — dipakai untuk Google Sign-In (BAB 7.5).
+model Account {
+  id                String  @id @default(uuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@map("password_reset_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Event Builder (BAB 9) & Invitation Builder (BAB 10)
+// ---------------------------------------------------------------------------
+
+model Event {
+  id            String      @id @default(uuid())
+  userId        String      @map("user_id")
+  name          String
+  type          EventType   @default(LAINNYA)
+  slug          String      @unique
+  status        EventStatus @default(DRAFT)
+  date          DateTime?
+  timezone      String      @default("Asia/Jakarta")
+  location      String?
+  address       String?
+  city          String?
+  description   String?     @db.Text
+  coverImageUrl String?     @map("cover_image_url")
+  theme         String      @default("elegant")
+  primaryColor  String?     @map("primary_color")
+  musicUrl      String?     @map("music_url")
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invitationPage  InvitationPage?
+  guests          Guest[]
+  digitalGift     DigitalGift?
+  whatsappBlasts  WhatsappCampaign[]
+  analyticsEvents AnalyticsEvent[]
+  auditLogs       AuditLog[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("events")
+}
+
+// Konten section-based untuk halaman undangan (BAB 10.4). Disimpan sebagai
+// JSON agar Invitation Builder (drag & drop) fleksibel tanpa migrasi kolom
+// setiap kali menambah/menghapus section.
+model InvitationPage {
+  id            String   @id @default(uuid())
+  eventId       String   @unique @map("event_id")
+  sections      Json     // urutan & konfigurasi tiap section (cover, story, gallery, dst)
+  metaTitle     String?  @map("meta_title")
+  metaDesc      String?  @map("meta_description")
+  ogImageUrl    String?  @map("og_image_url")
+  rsvpEnabled   Boolean  @default(true) @map("rsvp_enabled")
+  rsvpDeadline  DateTime? @map("rsvp_deadline")
+  wishesEnabled Boolean  @default(true) @map("wishes_enabled")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("invitation_pages")
+}
+
+// ---------------------------------------------------------------------------
+// Guest Management (BAB 11), RSVP (BAB 12), QR Check-in (BAB 14)
+// ---------------------------------------------------------------------------
+
+model Guest {
+  id             String     @id @default(uuid())
+  eventId        String     @map("event_id")
+  name           String
+  whatsapp       String
+  email          String?
+  category       String?
+  tags           String[]   @default([])
+  companions     Int        @default(0) @map("companions")
+  note           String?
+  qrCode         String     @unique @default(uuid()) @map("qr_code")
+  invitationSent Boolean    @default(false) @map("invitation_sent")
+  invitationOpenedAt DateTime? @map("invitation_opened_at")
+
+  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  rsvp     Rsvp?
+  checkIn  CheckIn?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([eventId])
+  @@index([category])
+  @@map("guests")
+}
+
+model Rsvp {
+  id           String     @id @default(uuid())
+  guestId      String     @unique @map("guest_id")
+  status       RsvpStatus @default(BELUM_MERESPONS)
+  companions   Int        @default(0)
+  wishMessage  String?    @map("wish_message") @db.Text
+  answeredAt   DateTime?  @map("answered_at")
+
+  guest Guest @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("rsvps")
+}
+
+model CheckIn {
+  id        String        @id @default(uuid())
+  guestId   String        @unique @map("guest_id")
+  method    CheckinMethod @default(QR)
+  staffName String?       @map("staff_name")
+  device    String?
+  checkedInAt DateTime    @default(now()) @map("checked_in_at")
+
+  guest Guest @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@map("check_ins")
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp Blast (BAB 13)
+// ---------------------------------------------------------------------------
+
+model WhatsappCampaign {
+  id            String         @id @default(uuid())
+  eventId       String         @map("event_id")
+  name          String
+  templateText  String         @map("template_text") @db.Text
+  status        CampaignStatus @default(MENUNGGU)
+  scheduledAt   DateTime?      @map("scheduled_at")
+  recipientCount Int           @default(0) @map("recipient_count")
+  successCount  Int           @default(0) @map("success_count")
+  failedCount   Int           @default(0) @map("failed_count")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([eventId])
+  @@map("whatsapp_campaigns")
+}
+
+// ---------------------------------------------------------------------------
+// Digital Gift (BAB 16)
+// ---------------------------------------------------------------------------
+
+model DigitalGift {
+  id           String  @id @default(uuid())
+  eventId      String  @unique @map("event_id")
+  enabled      Boolean @default(false)
+  message      String? @db.Text
+  bankAccounts Json    @default("[]") @map("bank_accounts") // [{bank, number, holder}]
+  eWallets     Json    @default("[]") @map("e_wallets")     // [{provider, number}]
+  qrisImageUrl String? @map("qris_image_url")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("digital_gifts")
+}
+
+// ---------------------------------------------------------------------------
+// Analytics & Reporting (BAB 15) — event stream sederhana, diagregasi di query
+// ---------------------------------------------------------------------------
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  eventId   String   @map("event_id")
+  type      String   // e.g. "page_view", "rsvp_submit", "gift_click", "maps_click"
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, type])
+  @@map("analytics_events")
+}
+
+// ---------------------------------------------------------------------------
+// Subscription & Billing (BAB 18)
+// ---------------------------------------------------------------------------
+
+model Subscription {
+  id           String             @id @default(uuid())
+  userId       String             @unique @map("user_id")
+  plan         Plan               @default(BASIC)
+  status       SubscriptionStatus @default(ACTIVE)
+  startDate    DateTime           @default(now()) @map("start_date")
+  endDate      DateTime?          @map("end_date")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  userId         String        @map("user_id")
+  subscriptionId String?       @map("subscription_id")
+  plan           Plan          @default(BASIC)
+  amount         Int
+  paymentMethod  String?       @map("payment_method")
+  status         InvoiceStatus @default(PENDING)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("invoices")
+}
+
+// ---------------------------------------------------------------------------
+// Notification Center (BAB 20)
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id       String   @id @default(uuid())
+  userId   String   @map("user_id")
+  category String   // event | rsvp | whatsapp | checkin | subscription | account
+  title    String
+  body     String   @db.Text
+  readAt   DateTime? @map("read_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Audit Log (BAB 22)
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  eventId   String?  @map("event_id")
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([eventId])
+  @@map("audit_logs")
+}
