@@ -27,6 +27,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { email, password } = parsed.data;
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user || !user.passwordHash) return null;
+        if (!user.isActive) return null;
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
@@ -55,12 +56,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.uid = user.id;
         token.picture = user.image ?? token.picture;
+        const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+        token.role = dbUser?.role ?? "USER";
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.uid as string;
+        session.user.role = (token.role as typeof session.user.role) ?? "USER";
         if (token.picture) session.user.image = token.picture as string;
       }
       return session;
