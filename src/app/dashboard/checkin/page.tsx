@@ -2,9 +2,11 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
+import { QrScanner } from "@/components/dashboard/QrScanner";
 
-// BAB 14 — QR Check-in (BAB 14.8 — Manual Check-in sebagai fallback awal;
-// pemindaian kamera akan ditambahkan pada iterasi berikutnya)
+// BAB 14 — QR Check-in.
+// BAB 14.5 — Scan QR via kamera (QrScanner, client component).
+// BAB 14.8 — Manual Check-in tetap tersedia sebagai fallback.
 async function manualCheckin(formData: FormData) {
   "use server";
   const guestId = formData.get("guestId") as string;
@@ -41,7 +43,12 @@ export default async function CheckinPage({ searchParams }: { searchParams: { ev
         {checkedIn} dari {guests.length} tamu sudah check-in.
       </p>
 
-      <div className="mt-6 overflow-x-auto rounded-lg border border-champagne-100 bg-white shadow-soft">
+      <div className="mt-6">
+        <QrScanner />
+      </div>
+
+      <h2 className="mt-8 font-heading text-lg font-semibold text-forest-700">Daftar Tamu</h2>
+      <div className="mt-3 overflow-x-auto rounded-lg border border-champagne-100 bg-white shadow-soft">
         <table className="w-full text-left text-sm">
           <thead className="bg-champagne-50 text-slate-600">
             <tr>
