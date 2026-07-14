@@ -10,6 +10,8 @@ acara).
 
 Domain produksi: `selaluajak.kurinji.asia`
 
+**🚀 Live demo:** [selalu-ajak.vercel.app](https://selalu-ajak.vercel.app/) — sudah ter-deploy di Vercel, langsung bisa dicoba tanpa setup lokal.
+
 ---
 
 ## Status proyek
@@ -25,16 +27,20 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
 - ✅ Event Website publik `/i/{slug}` dengan personalisasi `?to=Nama` (BAB 10, 17)
 - ✅ Guest Management (BAB 11)
 - ✅ RSVP Management (BAB 12)
-- ✅ WhatsApp Blast — model kampanye siap, integrasi API pending (BAB 13)
-- ✅ QR Check-in — manual check-in, scan kamera menyusul (BAB 14)
+- ✅ WhatsApp Blast — model & kampanye siap, integrasi API sungguhan pending (BAB 13)
+- ✅ QR Check-in — manual check-in **dan** pemindaian kamera (`html5-qrcode`) (BAB 14)
 - ✅ Analytics dasar (BAB 15)
 - ✅ Digital Gift (BAB 16)
-- ✅ Skema database lengkap untuk Subscription & Billing, Notification, Audit Log
-  (BAB 18, 20, 22, 24) — UI-nya menyusul di Phase 2
+- ✅ Subscription & Billing — alur Pilih Paket → Konfirmasi → Simulasi Pembayaran
+  → Langganan Aktif; integrasi payment gateway sungguhan (Midtrans) pending (BAB 18)
+- ✅ Admin Console — dashboard, User Management, Event Management (read-only),
+  Subscription Management, Audit Log, role & permission (`ADMIN`, `SUPPORT`,
+  `FINANCE`, `CONTENT_MANAGER`, `DEVELOPER`) (BAB 21)
+- ✅ Audit Log dicatat otomatis untuk aksi-aksi administratif (BAB 22)
 
-Belum termasuk (lihat roadmap BAB 29 di blueprint): Admin Console (BAB 21),
-integrasi WhatsApp Business API & payment gateway sungguhan, Invitation Builder
-drag-and-drop penuh, integrasi otomatis ke Kenang Kurinji, dan fitur AI.
+Belum termasuk (lihat roadmap BAB 29 di blueprint): integrasi WhatsApp Business
+API & payment gateway sungguhan, Invitation Builder drag-and-drop penuh,
+integrasi otomatis ke Kenang Kurinji, dan fitur AI.
 
 ## Tech stack
 
@@ -52,6 +58,8 @@ kedua produk mudah dirawat oleh tim yang sama dan siap diintegrasikan (BAB 4.10
 
 ## Menjalankan secara lokal
 
+> Untuk coba-coba, cukup buka [selalu-ajak.vercel.app](https://selalu-ajak.vercel.app/) — bagian ini hanya perlu kalau mau develop / kontribusi ke kode.
+
 ```bash
 # 1. Install dependencies
 npm install
@@ -63,11 +71,20 @@ cp .env.example .env
 # 3. Jalankan migrasi database
 npx prisma migrate dev --name init
 
-# 4. Jalankan development server
+# 4. (Opsional) Isi data contoh — akun demo + satu acara
+npm run prisma:seed
+
+# 5. Jalankan development server
 npm run dev
 ```
 
-Buka `http://localhost:3000`.
+Buka `http://localhost:3000`. Jika menjalankan `prisma:seed`, login dengan
+`demo@selaluajak.kurinji.asia` / `password123`.
+
+Untuk masuk ke Admin Console (`/admin`), ubah `role` user di database menjadi
+salah satu dari `ADMIN`, `SUPPORT`, `FINANCE`, `CONTENT_MANAGER`, atau
+`DEVELOPER` (mis. lewat `npx prisma studio`) — akses penuh (ubah role user lain,
+upgrade langganan manual) hanya untuk role `ADMIN`.
 
 ## Struktur folder
 
@@ -79,18 +96,40 @@ src/
     (auth)/login, (auth)/register     # BAB 7
     dashboard/                        # BAB 8 — Overview, Events, Guests,
                                        #         RSVP, Check-in, WhatsApp,
-                                       #         Gift, Analytics, Settings
+                                       #         Gift, Billing, Analytics, Settings
+    admin/                            # BAB 21 — Admin Console (dashboard,
+                                       #          users, events, subscriptions,
+                                       #          audit-log)
     i/[slug]/                         # BAB 17 — halaman undangan publik
-    api/auth/, api/register/
+    api/auth/, api/register/, api/checkin/scan/, api/guests/[id]/qrcode/
   components/
     landing/                          # Navbar, Hero (BAB 6)
-    dashboard/                        # Sidebar (BAB 8.3)
+    dashboard/                        # Sidebar, QrScanner (BAB 8.3, 14.5)
+    admin/                            # AdminSidebar (BAB 21.2)
     ui/                               # Button, Input primitives
   lib/
-    prisma.ts, auth.ts, validation.ts, slug.ts, utils.ts
+    prisma.ts, auth.ts, admin.ts, plans.ts, subscription.ts,
+    validation.ts, slug.ts, utils.ts
 prisma/
   schema.prisma                       # BAB 24 — Database Design
+  seed.ts                             # Data contoh untuk development
 ```
+
+## Deployment
+
+Repo ini sudah live di Vercel: **[selalu-ajak.vercel.app](https://selalu-ajak.vercel.app/)**.
+
+Script `build` (`prisma generate && prisma db push --accept-data-loss && next build`)
+sudah disiapkan supaya schema Prisma otomatis ter-sync ke database produksi
+tiap kali deploy. Environment variables yang perlu diisi di project settings
+Vercel sama seperti `.env.example`, minimal:
+
+- `DATABASE_URL`, `DIRECT_URL` — koneksi PostgreSQL (mis. Neon, Supabase)
+- `AUTH_SECRET`, `NEXTAUTH_URL` — wajib untuk NextAuth
+- `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_APP_DOMAIN`
+
+Sisanya (`AUTH_GOOGLE_*`, `WHATSAPP_API_*`, `MIDTRANS_*`, `S3_*`) opsional,
+mengaktifkan fitur yang bersangkutan kalau diisi.
 
 ## Skema database
 
@@ -103,12 +142,14 @@ Lihat `prisma/schema.prisma` — entity utama: `User`, `Event`, `InvitationPage`
 
 1. Hubungkan penyedia WhatsApp Business API (`WHATSAPP_API_URL` /
    `WHATSAPP_API_TOKEN`) untuk mengaktifkan pengiriman WhatsApp Blast sungguhan.
-2. Tambahkan pemindaian kamera QR (mis. `html5-qrcode`) untuk Check-in (BAB 14.5).
+2. Integrasikan payment gateway (Midtrans, `MIDTRANS_SERVER_KEY` /
+   `MIDTRANS_CLIENT_KEY`) untuk menggantikan simulasi pembayaran di Subscription
+   & Billing (BAB 18.6).
 3. Bangun Invitation Builder drag-and-drop penuh di atas kolom `sections: Json`
    pada `InvitationPage` (BAB 10.3).
-4. Integrasikan payment gateway (Midtrans) untuk Subscription & Billing (BAB 18).
-5. Bangun Admin Console (BAB 21) untuk tim internal.
-6. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
+4. Tambahkan notifikasi in-app/email sungguhan di atas skema `Notification`
+   (BAB 20).
+5. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
 
 ---
 
