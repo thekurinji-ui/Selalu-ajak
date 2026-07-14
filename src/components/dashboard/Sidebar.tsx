@@ -13,6 +13,7 @@ import {
   Gift,
   BarChart3,
   Settings,
+  CreditCard,
 } from "lucide-react";
 
 // BAB 8.3 — Struktur Dashboard
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/dashboard/whatsapp", label: "WhatsApp Blast", icon: MessageCircle },
   { href: "/dashboard/gift", label: "Gift", icon: Gift },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
