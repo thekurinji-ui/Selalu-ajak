@@ -1,15 +1,28 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { prisma } from "@/lib/prisma";
+import { PLANS } from "@/lib/plans";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+// BAB 18 — Subscription & Billing
+// Setiap user seharusnya punya 1 Subscription (dibuat otomatis saat register,
+// lihat src/app/api/register/route.ts). Fungsi ini jadi fallback untuk user
+// lama yang dibuat sebelum fitur ini ada, supaya tidak error.
+export async function getOrCreateSubscription(userId: string) {
+  const existing = await prisma.subscription.findUnique({ where: { userId } });
+  if (existing) return existing;
+
+  return prisma.subscription.create({
+    data: { userId, plan: "BASIC", status: "ACTIVE" },
+  });
 }
 
-export function formatDateID(date: Date | string) {
-  return new Intl.DateTimeFormat("id-ID", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(date));
+export async function getEventUsage(userId: string) {
+  const subscription = await getOrCreateSubscription(userId);
+  const usedEvents = await prisma.event.count({ where: { userId } });
+  const config = PLANS[subscription.plan];
+
+  return {
+    subscription,
+    plan: config,
+    usedEvents,
+    limitReached: usedEvents >= config.maxEvents,
+  };
 }
