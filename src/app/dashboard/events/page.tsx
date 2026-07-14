@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateUniqueEventSlug } from "@/lib/slug";
 import { eventSchema } from "@/lib/validation";
+import { getEventUsage } from "@/lib/subscription";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -13,6 +14,10 @@ async function createEvent(formData: FormData) {
 
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+
+  // BAB 18.4 — jumlah acara dibatasi sesuai paket langganan aktif.
+  const { limitReached } = await getEventUsage(session.user.id);
+  if (limitReached) redirect("/dashboard/events?error=limit");
 
   const parsed = eventSchema.safeParse({
     name: formData.get("name"),
@@ -40,7 +45,11 @@ async function createEvent(formData: FormData) {
   redirect(`/dashboard/events/${event.id}`);
 }
 
-export default async function EventsPage() {
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: { error?: string };
+}) {
   const session = await auth();
   const events = session?.user?.id
     ? await prisma.event.findMany({
@@ -52,6 +61,16 @@ export default async function EventsPage() {
   return (
     <div>
       <h1 className="font-heading text-2xl font-semibold text-forest-700">Acara Saya</h1>
+
+      {searchParams.error === "limit" && (
+        <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Batas jumlah acara pada paket kamu sudah tercapai.{" "}
+          <Link href="/dashboard/billing" className="font-medium underline">
+            Upgrade paket
+          </Link>{" "}
+          untuk membuat acara lebih banyak.
+        </div>
+      )}
 
       <form
         action={createEvent}
