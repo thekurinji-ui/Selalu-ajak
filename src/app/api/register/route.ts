@@ -32,6 +32,11 @@ export async function POST(req: Request) {
     data: { name, email, passwordHash },
   });
 
+  // BAB 18 — setiap user baru mulai dari paket Basic (gratis) secara otomatis.
+  await prisma.subscription.create({
+    data: { userId: user.id, plan: "BASIC", status: "ACTIVE" },
+  });
+
   return NextResponse.json({
     status: "success",
     message: "Akun berhasil dibuat.",
