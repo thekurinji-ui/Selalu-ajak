@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { Role } from "@prisma/client";
+import type { Role, Prisma } from "@prisma/client";
 
 // BAB 21.12 — Role & Permission
 // Super Admin (ADMIN) akses penuh. Peran lain dibatasi ke area yang relevan
@@ -31,6 +31,6 @@ export async function logAdminAction(
   metadata?: Record<string, unknown>,
 ) {
   await prisma.auditLog.create({
-    data: { userId: adminUserId, action, metadata: metadata ?? undefined },
+    data: { userId: adminUserId, action, metadata: metadata as Prisma.InputJsonValue | undefined },
   });
 }
