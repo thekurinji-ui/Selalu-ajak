@@ -3,10 +3,35 @@
 @tailwind utilities;
 
 @layer base {
+  /* Theme System (BAB 10.6) — nilai default ini SENGAJA disamakan persis
+     dengan preset "elegant" (identitas asli Selalu Ajak) agar setiap bagian
+     aplikasi yang belum dibungkus <ThemeProvider> (dashboard, login, admin,
+     dst.) tetap tampil sama seperti sebelum fitur ini ada. Nilai sesungguhnya
+     untuk tiap undangan diganti lewat inline style di ThemeProvider. */
+  :root {
+    --sa-primary: #25402F;
+    --sa-primary-dark: #1B3022;
+    --sa-secondary: #C9A66B;
+    --sa-secondary-dark: #AD8A50;
+    --sa-bg: #FFFDF8;
+    --sa-surface: #FFFFFF;
+    --sa-text: #1E2227;
+    --sa-muted: #5B6470;
+    --sa-border: #EEDFBE;
+    --sa-font-heading: var(--font-fraunces), serif;
+    --sa-font-body: var(--font-inter), sans-serif;
+  }
+
   body {
     @apply bg-ivory text-slate-900 font-body antialiased;
   }
   h1, h2, h3, h4 {
     @apply font-heading;
+  }
+
+  /* Di dalam undangan (Live Preview & halaman publik /i/[slug]), heading
+     memakai pasangan font tema yang dipilih, bukan Fraunces bawaan dashboard. */
+  .invitation-theme :is(h1, h2, h3, h4) {
+    font-family: var(--sa-font-heading);
   }
 }
