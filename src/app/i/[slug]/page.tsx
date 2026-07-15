@@ -60,9 +60,29 @@ export default async function InvitationPage({
   const sections = parseSections(event.invitationPage?.sections).filter((s) => {
     if (s.type === "rsvp") return event.invitationPage?.rsvpEnabled ?? true;
     if (s.type === "wishes") return event.invitationPage?.wishesEnabled ?? true;
-    if (s.type === "digital_gift") return event.digitalGift?.enabled ?? true;
+    if (s.type === "digital_gift") return event.digitalGift?.enabled ?? false;
     return true;
   });
+
+  const eventContext = {
+    name: event.name,
+    date: event.date,
+    location: event.location,
+    address: event.address,
+    description: event.description,
+    coverImageUrl: event.coverImageUrl,
+    digitalGift: event.digitalGift
+      ? {
+          enabled: event.digitalGift.enabled,
+          message: event.digitalGift.message,
+          qrisImageUrl: event.digitalGift.qrisImageUrl,
+          bankAccounts: Array.isArray(event.digitalGift.bankAccounts)
+            ? (event.digitalGift.bankAccounts as any[])
+            : [],
+          eWallets: Array.isArray(event.digitalGift.eWallets) ? (event.digitalGift.eWallets as any[]) : [],
+        }
+      : null,
+  };
 
   return (
     <main className="min-h-screen bg-ivory">
@@ -70,7 +90,7 @@ export default async function InvitationPage({
         <SectionRenderer
           key={section.id}
           section={section}
-          event={event}
+          event={eventContext}
           guestName={guestName}
           mode="live"
           onSubmitRsvp={submitRsvp}
