@@ -12,7 +12,7 @@ export default async function InvitationBuilderPage({ params }: { params: { id: 
 
   const event = await prisma.event.findFirst({
     where: { id: params.id, userId: session.user.id },
-    include: { invitationPage: true },
+    include: { invitationPage: true, digitalGift: true },
   });
 
   if (!event) notFound();
@@ -31,6 +31,17 @@ export default async function InvitationBuilderPage({ params }: { params: { id: 
         address: event.address,
         description: event.description,
         coverImageUrl: event.coverImageUrl,
+        digitalGift: event.digitalGift
+          ? {
+              enabled: event.digitalGift.enabled,
+              message: event.digitalGift.message,
+              qrisImageUrl: event.digitalGift.qrisImageUrl,
+              bankAccounts: Array.isArray(event.digitalGift.bankAccounts)
+                ? (event.digitalGift.bankAccounts as any[])
+                : [],
+              eWallets: Array.isArray(event.digitalGift.eWallets) ? (event.digitalGift.eWallets as any[]) : [],
+            }
+          : null,
       }}
     />
   );
