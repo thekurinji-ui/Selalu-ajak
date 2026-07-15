@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { rsvpSchema } from "@/lib/validation";
 import { parseSections } from "@/lib/invitation-sections";
 import { SectionRenderer } from "@/components/invitation/SectionRenderer";
+import { ThemeProvider } from "@/components/invitation/ThemeProvider";
 
 // BAB 17 — Event Website: halaman undangan publik yang diakses tamu.
 // Mendukung personalisasi via ?to=Nama%20Tamu (BAB 10.11 / BAB 11.14).
@@ -85,17 +86,27 @@ export default async function InvitationPage({
   };
 
   return (
-    <main className="min-h-screen bg-ivory">
-      {sections.map((section) => (
-        <SectionRenderer
-          key={section.id}
-          section={section}
-          event={eventContext}
-          guestName={guestName}
-          mode="live"
-          onSubmitRsvp={submitRsvp}
-        />
-      ))}
+    <main className="min-h-screen">
+      <ThemeProvider
+        theme={{
+          theme: event.theme,
+          primaryColor: event.primaryColor,
+          secondaryColor: event.secondaryColor,
+          backgroundColor: event.backgroundColor,
+          fontId: event.fontId,
+        }}
+      >
+        {sections.map((section) => (
+          <SectionRenderer
+            key={section.id}
+            section={section}
+            event={eventContext}
+            guestName={guestName}
+            mode="live"
+            onSubmitRsvp={submitRsvp}
+          />
+        ))}
+      </ThemeProvider>
     </main>
   );
 }
