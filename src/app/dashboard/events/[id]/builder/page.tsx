@@ -24,6 +24,13 @@ export default async function InvitationBuilderPage({ params }: { params: { id: 
       eventId={event.id}
       eventSlug={event.slug}
       initialSections={sections}
+      initialTheme={{
+        theme: event.theme,
+        primaryColor: event.primaryColor,
+        secondaryColor: event.secondaryColor,
+        backgroundColor: event.backgroundColor,
+        fontId: event.fontId,
+      }}
       event={{
         name: event.name,
         date: event.date,
