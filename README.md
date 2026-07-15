@@ -43,18 +43,21 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
 - ✅ Analytics dasar (BAB 15)
 - ✅ Digital Gift (BAB 16) — pesan, rekening bank, e-wallet & QRIS tampil
   otomatis di section Digital Gift pada undangan
-- 🟡 Subscription & Billing — alur Pilih Paket → Invoice → Langganan Aktif
-  lengkap sesuai BAB 18.5, tapi payment gateway (Midtrans) **belum
-  tersambung**; pembayaran masih disimulasikan lewat tombol manual (BAB 18)
+- ✅ Subscription & Billing — alur Pilih Paket → Invoice → Metode Pembayaran
+  → Langganan Aktif (BAB 18.5), tersambung ke payment gateway Midtrans Snap
+  (VA, QRIS, Kartu Kredit/Debit, E-Wallet — BAB 18.6), **live di Production**
+  untuk `selaluajak.kurinji.asia`. Kalau `MIDTRANS_SERVER_KEY` belum diisi di
+  environment tertentu (mis. saat development lokal), otomatis jatuh ke
+  tombol simulasi supaya tetap bisa dites tanpa akun Midtrans
 - ✅ **Admin Console** — dashboard ringkasan platform, kelola Users, Events,
   Subscriptions, dan Audit Log, dilindungi `requireAdmin()` guard (BAB 21)
 - ✅ Skema database lengkap untuk Notification (BAB 20, 22) — UI-nya menyusul
   di Phase 2
 
 Belum termasuk (lihat roadmap BAB 29 di blueprint): integrasi sungguhan
-WhatsApp Business API & payment gateway Midtrans (fondasi/alur datanya sudah
-ada, tinggal sambung provider), Theme System visual (BAB 10.6 — saat ini satu
-tema default), integrasi otomatis ke Kenang Kurinji, dan fitur AI.
+WhatsApp Business API (masih pakai Fonnte, gateway non-resmi), Theme System
+visual (BAB 10.6 — saat ini satu tema default), integrasi otomatis ke Kenang
+Kurinji, dan fitur AI.
 
 ## Tech stack
 
@@ -92,33 +95,30 @@ Buka `http://localhost:3000`.
 ## Struktur folder
 
 Mengikuti Information Architecture di BAB 5 blueprint:
-
-```
 src/
-  app/
-    (auth)/login, (auth)/register     # BAB 7
-    dashboard/                        # BAB 8 — Overview, Events, Guests,
-                                       #         RSVP, Check-in, WhatsApp,
-                                       #         Gift, Analytics, Settings
-    dashboard/events/[id]/builder/    # BAB 10 — Invitation Builder (editor)
-    i/[slug]/                         # BAB 17 — halaman undangan publik
-    api/auth/, api/register/
-    api/invitation/                   # GET/PUT sections — Auto Save (BAB 10.9)
-  components/
-    landing/                          # Navbar, Hero (BAB 6)
-    dashboard/                        # Sidebar (BAB 8.3)
-    builder/                          # Invitation Builder: LayersPanel,
-                                       #   AddSectionDrawer, SectionSettingsPanel,
-                                       #   PreviewCanvas, InvitationBuilder (BAB 10)
-    invitation/                       # SectionRenderer — dipakai bersama oleh
-                                       #   builder (preview) & halaman publik
-    ui/                               # Button, Input primitives
-  lib/
-    prisma.ts, auth.ts, validation.ts, slug.ts, utils.ts
-    invitation-sections.ts            # Skema & Section Library (BAB 10.4–10.5)
+app/
+(auth)/login, (auth)/register     # BAB 7
+dashboard/                        # BAB 8 — Overview, Events, Guests,
+#         RSVP, Check-in, WhatsApp,
+#         Gift, Analytics, Settings
+dashboard/events/[id]/builder/    # BAB 10 — Invitation Builder (editor)
+i/[slug]/                         # BAB 17 — halaman undangan publik
+api/auth/, api/register/
+api/invitation/                   # GET/PUT sections — Auto Save (BAB 10.9)
+components/
+landing/                          # Navbar, Hero (BAB 6)
+dashboard/                        # Sidebar (BAB 8.3)
+builder/                          # Invitation Builder: LayersPanel,
+#   AddSectionDrawer, SectionSettingsPanel,
+#   PreviewCanvas, InvitationBuilder (BAB 10)
+invitation/                       # SectionRenderer — dipakai bersama oleh
+#   builder (preview) & halaman publik
+ui/                               # Button, Input primitives
+lib/
+prisma.ts, auth.ts, validation.ts, slug.ts, utils.ts
+invitation-sections.ts            # Skema & Section Library (BAB 10.4–10.5)
 prisma/
-  schema.prisma                       # BAB 24 — Database Design
-```
+schema.prisma                       # BAB 24 — Database Design
 
 ## Skema database
 
@@ -154,10 +154,31 @@ Version History (10.15, roadmap Future Development).
 
 ## Langkah selanjutnya
 
-1. Sambungkan Midtrans sungguhan untuk Subscription & Billing (BAB 18.6) —
-   ganti tombol simulasi "Pembayaran Berhasil" dengan redirect ke Midtrans
-   Snap + webhook `markInvoicePaid` yang sudah ada di
-   `src/app/dashboard/billing/page.tsx`.
+1. Isi `MIDTRANS_SERVER_KEY`, `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`, `APP_URL`, dan
+   `MIDTRANS_IS_PRODUCTION` untuk mengaktifkan pembayaran Midtrans Snap
+   sungguhan di Subscription & Billing (BAB 18.6) — lihat `src/lib/midtrans.ts`,
+   `/api/billing/checkout`, dan `/api/billing/webhook`.
+
+   > **Sandbox vs Production**: `MIDTRANS_IS_PRODUCTION` wajib disamakan
+   > dengan jenis key yang diisi — `"true"` kalau `MIDTRANS_SERVER_KEY` &
+   > `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` adalah Production key (tanpa prefix
+   > `SB-`), atau `"false"`/kosong kalau masih Sandbox key (prefix
+   > `SB-Mid-server-...` / `SB-Mid-client-...`). Kalau kedua hal ini tidak
+   > cocok (mis. Production key tapi flag masih `false`), request akan
+   > diarahkan ke endpoint Midtrans yang salah dan transaksi akan ditolak.
+   > Payment Notification URL di Midtrans Dashboard juga perlu didaftarkan di
+   > mode yang sesuai (Sandbox atau Production) — kedua mode punya setting
+   > terpisah, tidak otomatis ikut satu sama lain.
+
+   > **Catatan multi-web Kurinji**: kalau 1 akun Midtrans ini dipakai bareng
+   > oleh web Kurinji lain (mis. `kenang.kurinji.asia`, `music.kurinji.asia`),
+   > `MIDTRANS_SERVER_KEY`, `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`, dan
+   > `MIDTRANS_IS_PRODUCTION` boleh sama di semua web, tapi `APP_URL`
+   > **wajib beda-beda per web** — isi dengan domain web itu sendiri (mis.
+   > `https://selaluajak.kurinji.asia` di project ini). Nilai ini dipakai
+   > untuk mengirim header `X-Override-Notification` ke Midtrans supaya
+   > notifikasi pembayaran selalu balik ke webhook web yang benar-benar
+   > membuat transaksinya, bukan ke Notification URL default di dashboard.
 2. Bangun Theme System visual (BAB 10.6–10.7) — ganti warna, font, dan
    background tema langsung dari Invitation Builder.
 3. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
