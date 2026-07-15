@@ -198,7 +198,7 @@ export function InvitationBuilder({ eventId, eventSlug, initialSections, initial
         />
 
         <div className="hidden border-l border-champagne-100 bg-white lg:block">
-          <SectionSettingsPanel section={selectedSection} onChange={updateSectionData} />
+          <SectionSettingsPanel eventId={eventId} section={selectedSection} onChange={updateSectionData} />
         </div>
       </div>
 
@@ -217,7 +217,7 @@ export function InvitationBuilder({ eventId, eventSlug, initialSections, initial
           />
         </div>
         <div className="max-h-64 overflow-y-auto">
-          <SectionSettingsPanel section={selectedSection} onChange={updateSectionData} />
+          <SectionSettingsPanel eventId={eventId} section={selectedSection} onChange={updateSectionData} />
         </div>
       </div>
 
