@@ -48,6 +48,11 @@ export default async function EventWorkspacePage({ params }: { params: { id: str
 
       {/* BAB 9.8 — Menu Workspace */}
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <WorkspaceCard
+          href={`/dashboard/events/${event.id}/builder`}
+          title="Invitation Builder"
+          desc="Susun undangan drag-and-drop"
+        />
         <WorkspaceCard href={`/dashboard/guests?eventId=${event.id}`} title="Guests" desc={`${event.guests.length} tamu`} />
         <WorkspaceCard href={`/dashboard/rsvp?eventId=${event.id}`} title="RSVP" desc="Lihat konfirmasi kehadiran" />
         <WorkspaceCard href={`/dashboard/whatsapp?eventId=${event.id}`} title="WhatsApp Blast" desc="Kirim undangan massal" />
