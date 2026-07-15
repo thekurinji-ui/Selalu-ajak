@@ -184,9 +184,16 @@ model Event {
   description   String?     @db.Text
   coverImageUrl String?     @map("cover_image_url")
   templateId    String?     @map("template_id")
-  theme         String      @default("elegant")
-  primaryColor  String?     @map("primary_color")
-  musicUrl      String?     @map("music_url")
+  // Theme System (BAB 10.6-10.7): `theme` menyimpan id preset dari
+  // INVITATION_THEMES (src/lib/invitation-themes.ts). primaryColor,
+  // secondaryColor, backgroundColor bersifat opsional — kalau null, halaman
+  // undangan memakai warna bawaan preset. fontId merujuk ke FONT_PAIRS.
+  theme           String   @default("elegant")
+  primaryColor    String?  @map("primary_color")
+  secondaryColor  String?  @map("secondary_color")
+  backgroundColor String?  @map("background_color")
+  fontId          String   @default("fraunces-inter") @map("font_id")
+  musicUrl        String?  @map("music_url")
 
   user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   template        InvitationTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
