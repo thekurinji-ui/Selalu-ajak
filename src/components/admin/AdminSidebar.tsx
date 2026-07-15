@@ -10,6 +10,7 @@ import {
   CreditCard,
   ScrollText,
   ArrowLeftCircle,
+  LayoutTemplate,
 } from "lucide-react";
 
 // BAB 21.3–21.11 — Struktur Admin Console
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Pengguna", icon: Users },
   { href: "/admin/events", label: "Acara", icon: CalendarHeart },
+  { href: "/admin/templates", label: "Template", icon: LayoutTemplate },
   { href: "/admin/subscriptions", label: "Langganan", icon: CreditCard },
   { href: "/admin/audit-log", label: "Audit Log", icon: ScrollText },
 ];
