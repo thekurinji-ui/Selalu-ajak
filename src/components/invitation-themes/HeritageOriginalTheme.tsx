@@ -182,6 +182,12 @@ export function HeritageOriginalTheme({ content }: { content: HeritageOriginalCo
   const bride = content.bride ?? FALLBACK_PROFILE;
   const groom = content.groom ?? FALLBACK_PROFILE;
   const couples = content.brideFirst ? [bride, groom] : [groom, bride];
+  // Fallback untuk field array — mencegah crash kalau data yang dikirim
+  // (mis. dari event asli) belum mengisi salah satu bagian ini.
+  const schedules = content.schedules ?? [];
+  const galleryImages = content.galleryImages ?? [];
+  const loveStory = content.loveStory ?? [];
+  const giftAccounts = content.giftAccounts ?? [];
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-ivory font-body">
@@ -286,7 +292,7 @@ export function HeritageOriginalTheme({ content }: { content: HeritageOriginalCo
       <section className="bg-forest-700 px-6 py-20 text-center text-ivory">
         <h2 className="font-heading text-3xl font-semibold">Jadwal Acara</h2>
         <div className="mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-2">
-          {content.schedules.map((s) => (
+          {schedules.map((s) => (
             <div key={s.label} className="rounded-lg border border-champagne-300/30 bg-forest-600/50 p-6">
               <h3 className="font-heading text-xl font-semibold text-champagne-200">{s.label}</h3>
               <p className="mt-3 text-sm">{s.day}, {s.date}</p>
@@ -308,11 +314,11 @@ export function HeritageOriginalTheme({ content }: { content: HeritageOriginalCo
       </section>
 
       {/* Galeri */}
-      {content.galleryImages.length > 0 && (
+      {galleryImages.length > 0 && (
         <section className="px-6 py-20 text-center">
           <h2 className="font-heading text-3xl font-semibold text-forest-700">Galeri</h2>
           <div className="mx-auto mt-10 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3">
-            {content.galleryImages.map((src, i) => (
+            {galleryImages.map((src, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img key={i} src={src} alt={`Galeri ${i + 1}`} className="aspect-square w-full rounded-md object-cover" />
             ))}
@@ -321,11 +327,11 @@ export function HeritageOriginalTheme({ content }: { content: HeritageOriginalCo
       )}
 
       {/* Love Story */}
-      {content.loveStory.length > 0 && (
+      {loveStory.length > 0 && (
         <section className="bg-champagne-50/60 px-6 py-20">
           <h2 className="text-center font-heading text-3xl font-semibold text-forest-700">Kisah Kami</h2>
           <div className="mx-auto mt-12 max-w-xl space-y-8 border-l-2 border-champagne-300 pl-6">
-            {content.loveStory.map((m) => (
+            {loveStory.map((m) => (
               <div key={m.year} className="relative">
                 <span className="absolute -left-[31px] top-1 h-3 w-3 rounded-full bg-champagne-500" />
                 <p className="font-heading text-lg font-semibold text-forest-700">{m.year}</p>
@@ -337,7 +343,7 @@ export function HeritageOriginalTheme({ content }: { content: HeritageOriginalCo
       )}
 
       {/* Amplop Digital */}
-      {content.giftAccounts.length > 0 && (
+      {giftAccounts.length > 0 && (
         <section className="px-6 py-20 text-center">
           <h2 className="font-heading text-3xl font-semibold text-forest-700">Tanda Kasih</h2>
           <p className="mx-auto mt-3 max-w-md text-sm text-slate-600">
@@ -345,7 +351,7 @@ export function HeritageOriginalTheme({ content }: { content: HeritageOriginalCo
             memberi tanda kasih, kami sediakan di bawah ini.
           </p>
           <div className="mx-auto mt-8 flex max-w-sm flex-col gap-4">
-            {content.giftAccounts.map((acc) => (
+            {giftAccounts.map((acc) => (
               <div key={acc.accountNumber} className="rounded-lg border border-champagne-200 bg-white p-5 shadow-soft">
                 <p className="font-heading text-base font-semibold text-forest-700">{acc.bankName}</p>
                 <p className="mt-1 text-sm text-slate-600">{acc.accountNumber}</p>
