@@ -49,10 +49,27 @@ const config: Config = {
         success: { DEFAULT: "#10B981" }, // Emerald
         warning: { DEFAULT: "#F59E0B" }, // Amber
         danger: { DEFAULT: "#E11D48" },  // Rose Red
+        // Theme System (BAB 10.6) — token dinamis, nilainya diambil dari
+        // variabel CSS `--sa-*` (lihat globals.css & ThemeProvider). Dipakai
+        // di komponen yang tampil di dalam undangan (SectionRenderer) supaya
+        // ikut berubah sesuai tema yang dipilih user per-event.
+        theme: {
+          primary: "var(--sa-primary)",
+          "primary-dark": "var(--sa-primary-dark)",
+          secondary: "var(--sa-secondary)",
+          "secondary-dark": "var(--sa-secondary-dark)",
+          bg: "var(--sa-bg)",
+          surface: "var(--sa-surface)",
+          text: "var(--sa-text)",
+          muted: "var(--sa-muted)",
+          border: "var(--sa-border)",
+        },
       },
       fontFamily: {
         heading: ["var(--font-fraunces)", "serif"],
         body: ["var(--font-inter)", "sans-serif"],
+        "theme-heading": ["var(--sa-font-heading)"],
+        "theme-body": ["var(--sa-font-body)"],
       },
       borderRadius: {
         sm: "8px",
