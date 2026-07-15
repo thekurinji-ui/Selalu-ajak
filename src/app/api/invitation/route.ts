@@ -3,6 +3,12 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseSections, sectionsSchema } from "@/lib/invitation-sections";
+import { THEME_PRESETS, FONT_PAIRS } from "@/lib/invitation-themes";
+
+const hexColor = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/, "Format warna harus hex, mis. #25402F")
+  .nullable();
 
 // BAB 10.9 — Auto Save
 // GET  /api/invitation?eventId=...  -> memuat sections + pengaturan untuk editor
@@ -50,6 +56,9 @@ export async function GET(req: NextRequest) {
       coverImageUrl: event.coverImageUrl,
       theme: event.theme,
       primaryColor: event.primaryColor,
+      secondaryColor: event.secondaryColor,
+      backgroundColor: event.backgroundColor,
+      fontId: event.fontId,
       musicUrl: event.musicUrl,
     },
   });
@@ -66,6 +75,22 @@ const putBodySchema = z.object({
       wishesEnabled: z.boolean().optional(),
     })
     .optional(),
+  // BAB 10.6 — Theme System. `theme` di sini adalah id preset dari
+  // THEME_PRESETS; primaryColor/secondaryColor/backgroundColor adalah
+  // override opsional (null = pakai warna bawaan preset).
+  theme: z
+    .object({
+      theme: z
+        .string()
+        .refine((id) => THEME_PRESETS.some((t) => t.id === id), "Preset tema tidak dikenali"),
+      primaryColor: hexColor.optional(),
+      secondaryColor: hexColor.optional(),
+      backgroundColor: hexColor.optional(),
+      fontId: z
+        .string()
+        .refine((id) => Boolean(FONT_PAIRS[id]), "Pasangan font tidak dikenali"),
+    })
+    .optional(),
 });
 
 export async function PUT(req: NextRequest) {
@@ -80,7 +105,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Data tidak valid", details: parsed.error.flatten() }, { status: 422 });
   }
 
-  const { eventId, sections, settings } = parsed.data;
+  const { eventId, sections, settings, theme } = parsed.data;
   const event = await getOwnedEvent(eventId, session.user.id);
   if (!event) {
     return NextResponse.json({ error: "Acara tidak ditemukan" }, { status: 404 });
@@ -107,6 +132,22 @@ export async function PUT(req: NextRequest) {
     },
   });
 
+  // BAB 10.6 — Theme System: field tema hidup di tabel Event (bukan
+  // InvitationPage), jadi disimpan lewat query terpisah, tetap dalam alur
+  // Auto Save yang sama.
+  if (theme) {
+    await prisma.event.update({
+      where: { id: eventId },
+      data: {
+        theme: theme.theme,
+        primaryColor: theme.primaryColor ?? null,
+        secondaryColor: theme.secondaryColor ?? null,
+        backgroundColor: theme.backgroundColor ?? null,
+        fontId: theme.fontId,
+      },
+    });
+  }
+
   await prisma.auditLog
     .create({
       data: {
@@ -121,4 +162,4 @@ export async function PUT(req: NextRequest) {
     });
 
   return NextResponse.json({ ok: true, updatedAt: saved.updatedAt });
-      }
+}
