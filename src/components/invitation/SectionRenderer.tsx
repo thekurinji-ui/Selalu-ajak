@@ -13,6 +13,13 @@ export interface InvitationEventContext {
   address?: string | null;
   description?: string | null;
   coverImageUrl?: string | null;
+  digitalGift?: {
+    enabled: boolean;
+    message?: string | null;
+    bankAccounts?: { bank: string; number: string; holder?: string }[] | null;
+    eWallets?: { provider: string; number: string }[] | null;
+    qrisImageUrl?: string | null;
+  } | null;
 }
 
 interface SectionRendererProps {
@@ -53,7 +60,7 @@ export function SectionRenderer({ section, event, guestName, mode = "live", onSu
     case "rsvp":
       return <RsvpSection guestName={guestName} mode={mode} onSubmitRsvp={onSubmitRsvp} />;
     case "digital_gift":
-      return <DigitalGiftSection />;
+      return <DigitalGiftSection event={event} />;
     case "wishes":
       return <WishesSection />;
     case "footer":
@@ -349,14 +356,54 @@ function RsvpSection({
   );
 }
 
-function DigitalGiftSection() {
+function DigitalGiftSection({ event }: { event: InvitationEventContext }) {
+  const gift = event.digitalGift;
+  const banks = gift?.bankAccounts || [];
+  const wallets = gift?.eWallets || [];
+  const hasMethod = banks.length > 0 || wallets.length > 0 || !!gift?.qrisImageUrl;
+
   return (
     <SectionShell className="mx-auto max-w-md px-6 py-16 text-center">
       <h2 className="font-heading text-2xl font-semibold text-forest-700">Tanda Kasih</h2>
       <p className="mt-4 text-sm text-slate-600">
-        Kehadiran dan doa restu Anda sudah menjadi hadiah yang sangat berarti bagi kami.
+        {gift?.message || "Kehadiran dan doa restu Anda sudah menjadi hadiah yang sangat berarti bagi kami."}
       </p>
-      <p className="mt-2 text-xs text-slate-400">QRIS / Transfer Bank / Dompet Digital diatur di menu Digital Gift.</p>
+
+      {gift?.qrisImageUrl && (
+        <div className="mt-6">
+          <img src={gift.qrisImageUrl} alt="QRIS" className="mx-auto h-48 w-48 rounded-md object-contain shadow-soft" />
+          <p className="mt-2 text-xs text-slate-500">Pindai kode QRIS di atas</p>
+        </div>
+      )}
+
+      {banks.length > 0 && (
+        <div className="mt-6 space-y-3 text-left">
+          {banks.map((b, i) => (
+            <div key={i} className="rounded-md border border-champagne-100 bg-white p-4 shadow-soft">
+              <p className="text-sm font-semibold text-forest-700">{b.bank}</p>
+              <p className="mt-1 font-mono text-sm text-slate-700">{b.number}</p>
+              {b.holder && <p className="text-xs text-slate-500">a.n. {b.holder}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {wallets.length > 0 && (
+        <div className="mt-4 space-y-3 text-left">
+          {wallets.map((w, i) => (
+            <div key={i} className="rounded-md border border-champagne-100 bg-white p-4 shadow-soft">
+              <p className="text-sm font-semibold text-forest-700">{w.provider}</p>
+              <p className="mt-1 font-mono text-sm text-slate-700">{w.number}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!hasMethod && (
+        <p className="mt-4 text-xs italic text-slate-400">
+          Metode hadiah digital belum diatur — lengkapi di menu Digital Gift pada workspace acara.
+        </p>
+      )}
     </SectionShell>
   );
 }
@@ -377,4 +424,4 @@ function FooterSection({ section }: { section: SectionInstance }) {
       <p className="mt-1">Dipersembahkan melalui Selalu Ajak — Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.</p>
     </SectionShell>
   );
-            }
+}
