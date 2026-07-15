@@ -2,7 +2,9 @@
 
 import { cn } from "@/lib/utils";
 import { SectionRenderer, type InvitationEventContext } from "@/components/invitation/SectionRenderer";
+import { ThemeProvider } from "@/components/invitation/ThemeProvider";
 import type { SectionInstance } from "@/lib/invitation-sections";
+import type { EventThemeFields } from "@/lib/invitation-themes";
 
 export type PreviewDevice = "desktop" | "tablet" | "mobile";
 
@@ -15,14 +17,17 @@ const DEVICE_WIDTH: Record<PreviewDevice, string> = {
 interface PreviewCanvasProps {
   sections: SectionInstance[];
   event: InvitationEventContext;
+  theme: EventThemeFields;
   device: PreviewDevice;
   selectedId: string | null;
   onSelect: (id: string) => void;
 }
 
-// BAB 10.8 — Live Preview. Setiap perubahan pada state builder langsung
-// tercermin di sini tanpa perlu simpan/refresh.
-export function PreviewCanvas({ sections, event, device, selectedId, onSelect }: PreviewCanvasProps) {
+// BAB 10.8 — Live Preview. Setiap perubahan pada state builder — termasuk
+// perubahan tema (BAB 10.6) — langsung tercermin di sini tanpa perlu
+// simpan/refresh, dibungkus ThemeProvider yang sama dengan halaman publik
+// /i/[slug] supaya hasilnya selalu identik.
+export function PreviewCanvas({ sections, event, theme, device, selectedId, onSelect }: PreviewCanvasProps) {
   const visibleSections = sections.filter((s) => s.visible);
 
   return (
@@ -34,28 +39,30 @@ export function PreviewCanvas({ sections, event, device, selectedId, onSelect }:
         )}
         style={{ width: DEVICE_WIDTH[device], maxWidth: "100%" }}
       >
-        {visibleSections.length === 0 ? (
-          <div className="flex min-h-[600px] flex-col items-center justify-center px-6 text-center">
-            <p className="font-heading text-lg text-forest-700">Undangan masih kosong</p>
-            <p className="mt-2 text-sm text-slate-400">Tambahkan section dari panel kiri untuk mulai membangun undangan.</p>
-          </div>
-        ) : (
-          sections.map(
-            (section) =>
-              section.visible && (
-                <div
-                  key={section.id}
-                  onClick={() => onSelect(section.id)}
-                  className={cn(
-                    "cursor-pointer transition",
-                    selectedId === section.id && "ring-2 ring-inset ring-forest-500",
-                  )}
-                >
-                  <SectionRenderer section={section} event={event} mode="preview" />
-                </div>
-              ),
-          )
-        )}
+        <ThemeProvider theme={theme} className="min-h-[600px]">
+          {visibleSections.length === 0 ? (
+            <div className="flex min-h-[600px] flex-col items-center justify-center px-6 text-center">
+              <p className="font-heading text-lg text-theme-primary">Undangan masih kosong</p>
+              <p className="mt-2 text-sm text-theme-muted">Tambahkan section dari panel kiri untuk mulai membangun undangan.</p>
+            </div>
+          ) : (
+            sections.map(
+              (section) =>
+                section.visible && (
+                  <div
+                    key={section.id}
+                    onClick={() => onSelect(section.id)}
+                    className={cn(
+                      "cursor-pointer transition",
+                      selectedId === section.id && "ring-2 ring-inset ring-forest-500",
+                    )}
+                  >
+                    <SectionRenderer section={section} event={event} mode="preview" />
+                  </div>
+                ),
+            )
+          )}
+        </ThemeProvider>
       </div>
     </div>
   );
