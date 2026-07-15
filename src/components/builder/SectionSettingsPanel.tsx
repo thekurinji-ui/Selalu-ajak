@@ -1,18 +1,20 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { SECTION_LIBRARY, type SectionInstance } from "@/lib/invitation-sections";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, UploadCloud, Loader2, X } from "lucide-react";
 
 interface SectionSettingsPanelProps {
+  eventId: string;
   section: SectionInstance | null;
   onChange: (id: string, data: Record<string, any>) => void;
 }
 
 // BAB 10.5 — pengaturan tiap section. BAB 10.7 — Customization tanpa kode:
 // semua field di sini langsung memengaruhi Live Preview.
-export function SectionSettingsPanel({ section, onChange }: SectionSettingsPanelProps) {
+export function SectionSettingsPanel({ eventId, section, onChange }: SectionSettingsPanelProps) {
   if (!section) {
     return (
       <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-400">
@@ -30,7 +32,7 @@ export function SectionSettingsPanel({ section, onChange }: SectionSettingsPanel
       <p className="mt-1 text-xs text-slate-500">{meta.description}</p>
 
       <div className="mt-5 space-y-4">
-        <Fields section={section} set={set} />
+        <Fields eventId={eventId} section={section} set={set} />
       </div>
     </div>
   );
@@ -45,16 +47,27 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Fields({ section, set }: { section: SectionInstance; set: (patch: Record<string, any>) => void }) {
+function Fields({
+  eventId,
+  section,
+  set,
+}: {
+  eventId: string;
+  section: SectionInstance;
+  set: (patch: Record<string, any>) => void;
+}) {
   const d = section.data;
 
   switch (section.type) {
     case "cover":
       return (
         <>
-          <Field label="URL Foto Utama">
-            <Input value={d.photoUrl || ""} onChange={(e) => set({ photoUrl: e.target.value })} placeholder="https://..." />
-          </Field>
+          <ImageUploadField
+            eventId={eventId}
+            label="Foto Utama"
+            value={d.photoUrl || ""}
+            onChange={(url) => set({ photoUrl: url })}
+          />
           <Field label="Judul Acara">
             <Input value={d.eventTitle || ""} onChange={(e) => set({ eventTitle: e.target.value })} placeholder="Kosongkan untuk pakai nama acara" />
           </Field>
@@ -89,9 +102,12 @@ function Fields({ section, set }: { section: SectionInstance; set: (patch: Recor
               <Field label="Nama">
                 <Input value={m.name || ""} onChange={(e) => updateArrayItem(members, i, { name: e.target.value }, set, "members")} />
               </Field>
-              <Field label="URL Foto">
-                <Input value={m.photoUrl || ""} onChange={(e) => updateArrayItem(members, i, { photoUrl: e.target.value }, set, "members")} />
-              </Field>
+              <ImageUploadField
+                eventId={eventId}
+                label="Foto"
+                value={m.photoUrl || ""}
+                onChange={(url) => updateArrayItem(members, i, { photoUrl: url }, set, "members")}
+              />
               <Field label="Orang Tua">
                 <Input value={m.parents || ""} onChange={(e) => updateArrayItem(members, i, { parents: e.target.value }, set, "members")} />
               </Field>
@@ -165,7 +181,8 @@ function Fields({ section, set }: { section: SectionInstance; set: (patch: Recor
               <option value="carousel">Carousel</option>
             </select>
           </Field>
-          <SimpleUrlListEditor
+          <ImageGalleryUploadField
+            eventId={eventId}
             label="Foto"
             urls={d.images || []}
             onChange={(next) => set({ images: next })}
@@ -285,42 +302,191 @@ function ListEditor({
   );
 }
 
-function SimpleUrlListEditor({
+// Upload satu file ke server lalu kembalikan URL publik R2-nya.
+// Dipakai bersama oleh ImageUploadField & ImageGalleryUploadField.
+async function uploadEventImage(eventId: string, file: File): Promise<string> {
+  const formData = new FormData();
+  formData.set("eventId", eventId);
+  formData.set("file", file);
+
+  const res = await fetch("/api/invitation/upload-image", { method: "POST", body: formData });
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok || json?.status !== "success") {
+    throw new Error(json?.message ?? "Gagal upload foto. Coba lagi.");
+  }
+  return json.url as string;
+}
+
+// Field upload foto tunggal (cover, foto mempelai, dst). Klien upload
+// langsung dari device — tidak perlu tempel link dari luar lagi.
+function ImageUploadField({
+  eventId,
+  label,
+  value,
+  onChange,
+}: {
+  eventId: string;
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+}) {
+  const [preview, setPreview] = useState<string | null>(value || null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    setPreview(value || null);
+  }, [value]);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    };
+  }, []);
+
+  async function handleFile(file: File | null) {
+    if (!file) return;
+    setError(null);
+
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    const localUrl = URL.createObjectURL(file);
+    objectUrlRef.current = localUrl;
+    setPreview(localUrl);
+    setUploading(true);
+
+    try {
+      const url = await uploadEventImage(eventId, file);
+      onChange(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal upload foto.");
+      setPreview(value || null);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-slate-700">{label}</label>
+      <label className="relative flex aspect-[4/3] w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border border-dashed border-champagne-200 bg-champagne-50/60 hover:border-forest-400">
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={preview} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex flex-col items-center gap-1 text-slate-400">
+            <UploadCloud size={20} />
+            <span className="text-[11px]">Tap untuk upload foto</span>
+          </div>
+        )}
+        {uploading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <Loader2 size={20} className="animate-spin text-white" />
+          </div>
+        )}
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+        />
+      </label>
+      <div className="mt-1 flex items-center justify-between">
+        <span className="text-[11px] text-slate-400">JPG, PNG, WEBP, GIF. Maks 5MB.</span>
+        {preview && !uploading && (
+          <button
+            type="button"
+            onClick={() => {
+              setPreview(null);
+              onChange("");
+            }}
+            className="text-[11px] text-danger hover:underline"
+          >
+            Hapus
+          </button>
+        )}
+      </div>
+      {error && <p className="mt-1 text-[11px] text-danger">{error}</p>}
+    </div>
+  );
+}
+
+// Grid upload multi-foto untuk section Galeri. Bisa pilih banyak file
+// sekaligus; masing-masing diupload lalu ditambahkan ke daftar `images`.
+function ImageGalleryUploadField({
+  eventId,
   label,
   urls,
   onChange,
 }: {
+  eventId: string;
   label: string;
   urls: string[];
   onChange: (next: string[]) => void;
 }) {
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    setError(null);
+    const files = Array.from(fileList);
+    setUploadingCount((c) => c + files.length);
+
+    // Akumulator lokal — bukan langsung pakai `urls` dari props di tiap
+    // iterasi, karena itu stale-closure sampai parent re-render. Kalau
+    // beberapa file diupload sekaligus, itu bisa bikin hasil upload
+    // sebelumnya ketimpa alih-alih terkumpul.
+    let current = urls;
+    for (const file of files) {
+      try {
+        const url = await uploadEventImage(eventId, file);
+        current = [...current, url];
+        onChange(current);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Sebagian foto gagal diupload.");
+      } finally {
+        setUploadingCount((c) => c - 1);
+      }
+    }
+  }
+
   return (
     <div>
       <label className="mb-1 block text-xs font-medium text-slate-700">{label}</label>
-      <div className="space-y-2">
+      <div className="grid grid-cols-3 gap-2">
         {urls.map((url, i) => (
-          <div key={i} className="flex gap-2">
-            <Input
-              value={url}
-              onChange={(e) => {
-                const next = [...urls];
-                next[i] = e.target.value;
-                onChange(next);
-              }}
-              placeholder="https://..."
-            />
+          <div key={i} className="group relative aspect-square overflow-hidden rounded-md border border-champagne-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt="" className="h-full w-full object-cover" />
             <button
+              type="button"
               onClick={() => onChange(urls.filter((_, idx) => idx !== i))}
-              className="rounded-md border border-champagne-200 px-2 text-slate-400 hover:text-danger"
+              className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition group-hover:opacity-100"
             >
-              <Trash2 size={14} />
+              <X size={12} />
             </button>
           </div>
         ))}
-        <Button variant="ghost" className="w-full" onClick={() => onChange([...urls, ""])}>
-          <Plus size={14} className="mr-1" /> Tambah Foto
-        </Button>
+        <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-champagne-200 text-slate-400 hover:border-forest-400">
+          <Plus size={16} />
+          <span className="text-[10px]">Tambah</span>
+          <input
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+        </label>
       </div>
+      {uploadingCount > 0 && (
+        <p className="mt-1 flex items-center gap-1 text-[11px] text-champagne-600">
+          <Loader2 size={12} className="animate-spin" /> Mengupload {uploadingCount} foto...
+        </p>
+      )}
+      {error && <p className="mt-1 text-[11px] text-danger">{error}</p>}
     </div>
   );
 }
