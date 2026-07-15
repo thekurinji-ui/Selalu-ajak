@@ -10,8 +10,6 @@ acara).
 
 Domain produksi: `selaluajak.kurinji.asia`
 
-**🚀 Live demo:** [selalu-ajak.vercel.app](https://selalu-ajak.vercel.app/) — sudah ter-deploy di Vercel, langsung bisa dicoba tanpa setup lokal.
-
 ---
 
 ## Status proyek
@@ -24,23 +22,34 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
 - ✅ Authentication — Register, Login (email/password + Google) (BAB 7)
 - ✅ Dashboard Overview (BAB 8)
 - ✅ Event Builder — buat & publish acara (BAB 9)
-- ✅ Event Website publik `/i/{slug}` dengan personalisasi `?to=Nama` (BAB 10, 17)
+- ✅ **Invitation Builder** — editor visual drag-and-drop penuh di atas kolom
+  `InvitationPage.sections: Json`: tambah/hapus/pindah/duplikasi/sembunyikan
+  section, 14 tipe section (Cover, Couple, Event Info, Countdown, Story,
+  Timeline, Gallery, Video, Maps, RSVP, Digital Gift, Wishes, Footer, dst.),
+  Live Preview dengan device switcher Desktop/Tablet/Mobile, dan Auto Save
+  (BAB 10.3–10.9)
+- ✅ Event Website publik `/i/{slug}` — render dinamis dari `sections`,
+  dengan personalisasi `?to=Nama` (BAB 10, 17)
 - ✅ Guest Management (BAB 11)
 - ✅ RSVP Management (BAB 12)
-- ✅ WhatsApp Blast — model & kampanye siap, integrasi API sungguhan pending (BAB 13)
-- ✅ QR Check-in — manual check-in **dan** pemindaian kamera (`html5-qrcode`) (BAB 14)
+- 🟡 WhatsApp Blast — alur & tabel kampanye lengkap, tapi pengiriman
+  sungguhan **belum tersambung** ke WhatsApp Business API (BAB 13)
+- ✅ QR Check-in — manual check-in, scan kamera menyusul (BAB 14)
 - ✅ Analytics dasar (BAB 15)
-- ✅ Digital Gift (BAB 16)
-- ✅ Subscription & Billing — alur Pilih Paket → Konfirmasi → Simulasi Pembayaran
-  → Langganan Aktif; integrasi payment gateway sungguhan (Midtrans) pending (BAB 18)
-- ✅ Admin Console — dashboard, User Management, Event Management (read-only),
-  Subscription Management, Audit Log, role & permission (`ADMIN`, `SUPPORT`,
-  `FINANCE`, `CONTENT_MANAGER`, `DEVELOPER`) (BAB 21)
-- ✅ Audit Log dicatat otomatis untuk aksi-aksi administratif (BAB 22)
+- ✅ Digital Gift (BAB 16) — pesan, rekening bank, e-wallet & QRIS tampil
+  otomatis di section Digital Gift pada undangan
+- 🟡 Subscription & Billing — alur Pilih Paket → Invoice → Langganan Aktif
+  lengkap sesuai BAB 18.5, tapi payment gateway (Midtrans) **belum
+  tersambung**; pembayaran masih disimulasikan lewat tombol manual (BAB 18)
+- ✅ **Admin Console** — dashboard ringkasan platform, kelola Users, Events,
+  Subscriptions, dan Audit Log, dilindungi `requireAdmin()` guard (BAB 21)
+- ✅ Skema database lengkap untuk Notification (BAB 20, 22) — UI-nya menyusul
+  di Phase 2
 
-Belum termasuk (lihat roadmap BAB 29 di blueprint): integrasi WhatsApp Business
-API & payment gateway sungguhan, Invitation Builder drag-and-drop penuh,
-integrasi otomatis ke Kenang Kurinji, dan fitur AI.
+Belum termasuk (lihat roadmap BAB 29 di blueprint): integrasi sungguhan
+WhatsApp Business API & payment gateway Midtrans (fondasi/alur datanya sudah
+ada, tinggal sambung provider), Theme System visual (BAB 10.6 — saat ini satu
+tema default), integrasi otomatis ke Kenang Kurinji, dan fitur AI.
 
 ## Tech stack
 
@@ -58,8 +67,6 @@ kedua produk mudah dirawat oleh tim yang sama dan siap diintegrasikan (BAB 4.10
 
 ## Menjalankan secara lokal
 
-> Untuk coba-coba, cukup buka [selalu-ajak.vercel.app](https://selalu-ajak.vercel.app/) — bagian ini hanya perlu kalau mau develop / kontribusi ke kode.
-
 ```bash
 # 1. Install dependencies
 npm install
@@ -71,20 +78,11 @@ cp .env.example .env
 # 3. Jalankan migrasi database
 npx prisma migrate dev --name init
 
-# 4. (Opsional) Isi data contoh — akun demo + satu acara
-npm run prisma:seed
-
-# 5. Jalankan development server
+# 4. Jalankan development server
 npm run dev
 ```
 
-Buka `http://localhost:3000`. Jika menjalankan `prisma:seed`, login dengan
-`demo@selaluajak.kurinji.asia` / `password123`.
-
-Untuk masuk ke Admin Console (`/admin`), ubah `role` user di database menjadi
-salah satu dari `ADMIN`, `SUPPORT`, `FINANCE`, `CONTENT_MANAGER`, atau
-`DEVELOPER` (mis. lewat `npx prisma studio`) — akses penuh (ubah role user lain,
-upgrade langganan manual) hanya untuk role `ADMIN`.
+Buka `http://localhost:3000`.
 
 ## Struktur folder
 
@@ -96,40 +94,26 @@ src/
     (auth)/login, (auth)/register     # BAB 7
     dashboard/                        # BAB 8 — Overview, Events, Guests,
                                        #         RSVP, Check-in, WhatsApp,
-                                       #         Gift, Billing, Analytics, Settings
-    admin/                            # BAB 21 — Admin Console (dashboard,
-                                       #          users, events, subscriptions,
-                                       #          audit-log)
+                                       #         Gift, Analytics, Settings
+    dashboard/events/[id]/builder/    # BAB 10 — Invitation Builder (editor)
     i/[slug]/                         # BAB 17 — halaman undangan publik
-    api/auth/, api/register/, api/checkin/scan/, api/guests/[id]/qrcode/
+    api/auth/, api/register/
+    api/invitation/                   # GET/PUT sections — Auto Save (BAB 10.9)
   components/
     landing/                          # Navbar, Hero (BAB 6)
-    dashboard/                        # Sidebar, QrScanner (BAB 8.3, 14.5)
-    admin/                            # AdminSidebar (BAB 21.2)
+    dashboard/                        # Sidebar (BAB 8.3)
+    builder/                          # Invitation Builder: LayersPanel,
+                                       #   AddSectionDrawer, SectionSettingsPanel,
+                                       #   PreviewCanvas, InvitationBuilder (BAB 10)
+    invitation/                       # SectionRenderer — dipakai bersama oleh
+                                       #   builder (preview) & halaman publik
     ui/                               # Button, Input primitives
   lib/
-    prisma.ts, auth.ts, admin.ts, plans.ts, subscription.ts,
-    validation.ts, slug.ts, utils.ts
+    prisma.ts, auth.ts, validation.ts, slug.ts, utils.ts
+    invitation-sections.ts            # Skema & Section Library (BAB 10.4–10.5)
 prisma/
   schema.prisma                       # BAB 24 — Database Design
-  seed.ts                             # Data contoh untuk development
 ```
-
-## Deployment
-
-Repo ini sudah live di Vercel: **[selalu-ajak.vercel.app](https://selalu-ajak.vercel.app/)**.
-
-Script `build` (`prisma generate && prisma db push --accept-data-loss && next build`)
-sudah disiapkan supaya schema Prisma otomatis ter-sync ke database produksi
-tiap kali deploy. Environment variables yang perlu diisi di project settings
-Vercel sama seperti `.env.example`, minimal:
-
-- `DATABASE_URL`, `DIRECT_URL` — koneksi PostgreSQL (mis. Neon, Supabase)
-- `AUTH_SECRET`, `NEXTAUTH_URL` — wajib untuk NextAuth
-- `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_APP_DOMAIN`
-
-Sisanya (`AUTH_GOOGLE_*`, `WHATSAPP_API_*`, `MIDTRANS_*`, `S3_*`) opsional,
-mengaktifkan fitur yang bersangkutan kalau diisi.
 
 ## Skema database
 
@@ -138,17 +122,44 @@ Lihat `prisma/schema.prisma` — entity utama: `User`, `Event`, `InvitationPage`
 `Invoice`, `Notification`, `AuditLog`, `AnalyticsEvent` — sesuai relasi di BAB
 24.5.
 
+## Invitation Builder (BAB 10)
+
+Editor visual drag-and-drop untuk menyusun website undangan, dibangun di atas
+kolom `InvitationPage.sections: Json`. Diakses lewat
+`/dashboard/events/{id}/builder`.
+
+- **Block-Based** (10.3) — setiap bagian undangan adalah "Section" yang bisa
+  ditambah, dihapus, dipindah (drag-and-drop), diduplikasi, dan disembunyikan.
+- **Section Library** (10.5) — 14 tipe section bawaan: Opening Cover, Opening
+  Message, Couple/Host, Event Information, Countdown, Story, Timeline,
+  Gallery, Video, Location & Maps, RSVP, Digital Gift, Wishes, Footer.
+  Didefinisikan di `src/lib/invitation-sections.ts`.
+- **Live Preview** (10.8) — perubahan langsung tercermin di kanvas tengah,
+  dengan switch tampilan Desktop / Tablet / Mobile.
+- **Auto Save** (10.9) — setiap perubahan sections di-debounce lalu disimpan
+  otomatis lewat `PUT /api/invitation`, dengan indikator "Menyimpan..." /
+  "Perubahan tersimpan.".
+- Halaman publik `/i/{slug}` merender section yang sama persis (komponen
+  `SectionRenderer` dipakai bersama oleh builder & halaman publik), jadi Live
+  Preview selalu identik dengan hasil akhir.
+
+Belum tercakup dari BAB 10: Theme System visual (10.6 — ganti tema/warna/font
+sekaligus), Custom CSS, Marketplace template, AI Copy/Theme Assistant, dan
+Version History (10.15, roadmap Future Development).
+
 ## Langkah selanjutnya
 
-1. Hubungkan penyedia WhatsApp Business API (`WHATSAPP_API_URL` /
-   `WHATSAPP_API_TOKEN`) untuk mengaktifkan pengiriman WhatsApp Blast sungguhan.
-2. Integrasikan payment gateway (Midtrans, `MIDTRANS_SERVER_KEY` /
-   `MIDTRANS_CLIENT_KEY`) untuk menggantikan simulasi pembayaran di Subscription
-   & Billing (BAB 18.6).
-3. Bangun Invitation Builder drag-and-drop penuh di atas kolom `sections: Json`
-   pada `InvitationPage` (BAB 10.3).
-4. Tambahkan notifikasi in-app/email sungguhan di atas skema `Notification`
-   (BAB 20).
+1. Sambungkan provider WhatsApp Business API sungguhan (`WHATSAPP_API_URL` /
+   `WHATSAPP_API_TOKEN` di `.env`) — alur & tabel kampanye di WhatsApp Blast
+   sudah siap, tinggal panggil API pengiriman di `createCampaign`
+   (`src/app/dashboard/whatsapp/page.tsx`).
+2. Sambungkan Midtrans sungguhan untuk Subscription & Billing (BAB 18.6) —
+   ganti tombol simulasi "Pembayaran Berhasil" dengan redirect ke Midtrans
+   Snap + webhook `markInvoicePaid` yang sudah ada di
+   `src/app/dashboard/billing/page.tsx`.
+3. Tambahkan pemindaian kamera QR (mis. `html5-qrcode`) untuk Check-in (BAB 14.5).
+4. Bangun Theme System visual (BAB 10.6–10.7) — ganti warna, font, dan
+   background tema langsung dari Invitation Builder.
 5. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
 
 ---
