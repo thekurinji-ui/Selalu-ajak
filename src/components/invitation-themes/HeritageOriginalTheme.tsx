@@ -168,12 +168,20 @@ function CoupleCard({ profile, align }: { profile: CoupleProfile; align: "left" 
   );
 }
 
+const FALLBACK_PROFILE: CoupleProfile = {
+  nickname: "-",
+  fullName: "-",
+  parentsLine: "",
+};
+
 export function HeritageOriginalTheme({ content }: { content: HeritageOriginalContent }) {
   const [opened, setOpened] = useState(false);
   const countdown = useCountdown(content.weddingDateISO);
-  const couples = content.brideFirst
-    ? [content.bride, content.groom]
-    : [content.groom, content.bride];
+  // Fallback ini mencegah halaman crash (mis. saat build/prerender atau saat
+  // data event asli belum lengkap) kalau bride/groom ternyata undefined.
+  const bride = content.bride ?? FALLBACK_PROFILE;
+  const groom = content.groom ?? FALLBACK_PROFILE;
+  const couples = content.brideFirst ? [bride, groom] : [groom, bride];
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-ivory font-body">
@@ -195,7 +203,7 @@ export function HeritageOriginalTheme({ content }: { content: HeritageOriginalCo
             The Wedding Of
           </p>
           <h1 className="mt-4 font-heading text-4xl font-semibold md:text-6xl">
-            {content.bride.nickname} &amp; {content.groom.nickname}
+            {bride.nickname} &amp; {groom.nickname}
           </h1>
           {content.guestName && (
             <p className="mt-8 text-sm text-champagne-100">
@@ -219,9 +227,9 @@ export function HeritageOriginalTheme({ content }: { content: HeritageOriginalCo
           The Wedding Of
         </p>
         <h1 className="mt-4 font-heading text-5xl font-semibold text-forest-700 md:text-7xl">
-          {content.bride.nickname}
+          {bride.nickname}
           <span className="mx-3 text-champagne-500">&amp;</span>
-          {content.groom.nickname}
+          {groom.nickname}
         </h1>
         <p className="mt-6 text-sm text-slate-500">
           {new Date(content.weddingDateISO).toLocaleDateString("id-ID", {
@@ -361,7 +369,7 @@ export function HeritageOriginalTheme({ content }: { content: HeritageOriginalCo
         )}
         <h2 className="mt-8 font-heading text-2xl font-semibold">Kami Yang Berbahagia</h2>
         <p className="mt-2 font-heading text-3xl font-semibold text-champagne-200">
-          {content.bride.nickname} &amp; {content.groom.nickname}
+          {bride.nickname} &amp; {groom.nickname}
         </p>
       </section>
 
@@ -370,4 +378,4 @@ export function HeritageOriginalTheme({ content }: { content: HeritageOriginalCo
       </footer>
     </main>
   );
-      }
+}
