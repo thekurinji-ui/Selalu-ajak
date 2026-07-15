@@ -44,3 +44,24 @@ export const rsvpSchema = z.object({
   companions: z.coerce.number().int().min(0).default(0),
   wishMessage: z.string().max(500).optional(),
 });
+
+// BAB Template Management — Admin/Content Manager kelola katalog template
+export const templateSchema = z.object({
+  name: z.string().min(3, "Nama template minimal 3 karakter"),
+  slug: z
+    .string()
+    .min(3, "Slug minimal 3 karakter")
+    .regex(/^[a-z0-9-]+$/, "Slug hanya boleh huruf kecil, angka, dan tanda strip"),
+  description: z.string().optional(),
+  eventType: z
+    .enum([
+      "PERNIKAHAN", "LAMARAN", "TUNANGAN", "ULANG_TAHUN", "WISUDA", "AQIQAH",
+      "TASYAKURAN", "SEMINAR", "WORKSHOP", "GATHERING", "CORPORATE_EVENT",
+      "PELUNCURAN_PRODUK", "KONFERENSI", "REUNI", "KOMUNITAS", "LAINNYA",
+    ])
+    .optional(),
+  primaryColor: z.string().optional(),
+  isPremium: z.coerce.boolean().default(false),
+  status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).default("DRAFT"),
+  defaultSections: z.string().min(2, "Struktur section wajib diisi"), // JSON string, di-parse di route
+});
