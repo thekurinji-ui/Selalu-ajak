@@ -32,8 +32,13 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
   dengan personalisasi `?to=Nama` (BAB 10, 17)
 - ✅ Guest Management (BAB 11)
 - ✅ RSVP Management (BAB 12)
-- 🟡 WhatsApp Blast — alur & tabel kampanye lengkap, tapi pengiriman
-  sungguhan **belum tersambung** ke WhatsApp Business API (BAB 13)
+- ✅ **WhatsApp Blast** — pengiriman sungguhan sudah tersambung ke
+  [Fonnte](https://fonnte.com) (BAB 13): tombol "Kirim Sekarang" mengirim
+  pesan personalisasi per-tamu (`{{nama_tamu}}`, `{{nama_acara}}`,
+  `{{tanggal_acara}}`, `{{lokasi_acara}}`, `{{link_undangan}}`), status
+  terkirim/gagal dilacak per-tamu di `WhatsappRecipient`, dan status
+  delivered/read diperbarui real-time lewat webhook Fonnte
+  (`POST /api/whatsapp/webhook`). Dibatasi paket langganan (`PLANS.*.whatsappBlast`)
 - ✅ QR Check-in — manual check-in, scan kamera menyusul (BAB 14)
 - ✅ Analytics dasar (BAB 15)
 - ✅ Digital Gift (BAB 16) — pesan, rekening bank, e-wallet & QRIS tampil
@@ -149,18 +154,17 @@ Version History (10.15, roadmap Future Development).
 
 ## Langkah selanjutnya
 
-1. Sambungkan provider WhatsApp Business API sungguhan (`WHATSAPP_API_URL` /
-   `WHATSAPP_API_TOKEN` di `.env`) — alur & tabel kampanye di WhatsApp Blast
-   sudah siap, tinggal panggil API pengiriman di `createCampaign`
-   (`src/app/dashboard/whatsapp/page.tsx`).
-2. Sambungkan Midtrans sungguhan untuk Subscription & Billing (BAB 18.6) —
+1. Sambungkan Midtrans sungguhan untuk Subscription & Billing (BAB 18.6) —
    ganti tombol simulasi "Pembayaran Berhasil" dengan redirect ke Midtrans
    Snap + webhook `markInvoicePaid` yang sudah ada di
    `src/app/dashboard/billing/page.tsx`.
-3. Tambahkan pemindaian kamera QR (mis. `html5-qrcode`) untuk Check-in (BAB 14.5).
-4. Bangun Theme System visual (BAB 10.6–10.7) — ganti warna, font, dan
+2. Bangun Theme System visual (BAB 10.6–10.7) — ganti warna, font, dan
    background tema langsung dari Invitation Builder.
-5. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
+3. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
+4. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
+   pindahkan proses kirim di `POST /api/whatsapp/campaigns/[id]/send` dari
+   loop sinkron ke queue/background job — saat ini dibatasi durasi function
+   Vercel (`maxDuration = 60`).
 
 ---
 
