@@ -67,6 +67,16 @@ enum CampaignStatus {
   GAGAL
 }
 
+// Status pengiriman per-penerima (WhatsappRecipient), berbeda dari
+// CampaignStatus yang mewakili status keseluruhan kampanye.
+enum RecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
 enum Plan {
   BASIC
   PREMIUM
@@ -266,9 +276,10 @@ model Guest {
   invitationSent Boolean    @default(false) @map("invitation_sent")
   invitationOpenedAt DateTime? @map("invitation_opened_at")
 
-  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  rsvp     Rsvp?
-  checkIn  CheckIn?
+  event              Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  rsvp               Rsvp?
+  checkIn            CheckIn?
+  whatsappRecipients WhatsappRecipient[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -322,13 +333,43 @@ model WhatsappCampaign {
   successCount  Int           @default(0) @map("success_count")
   failedCount   Int           @default(0) @map("failed_count")
 
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event      Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  recipients WhatsappRecipient[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([eventId])
   @@map("whatsapp_campaigns")
+}
+
+// Rincian pengiriman per-penerima untuk satu WhatsappCampaign. Dibuat saat
+// kampanye diproses (POST /api/whatsapp/campaigns/[id]/send) dan diperbarui
+// baik secara langsung dari response provider (Fonnte) maupun secara
+// asinkron lewat webhook status (POST /api/whatsapp/webhook).
+model WhatsappRecipient {
+  id                String          @id @default(uuid())
+  campaignId        String          @map("campaign_id")
+  guestId           String          @map("guest_id")
+  phone             String // nomor yang sudah dinormalisasi (format 62xxxxxxxxxx)
+  renderedMessage   String          @map("rendered_message") @db.Text
+  status            RecipientStatus @default(PENDING)
+  providerMessageId String?         @map("provider_message_id") // Fonnte: field `id` dari response send
+  errorReason       String?         @map("error_reason")
+  sentAt            DateTime?       @map("sent_at")
+  deliveredAt       DateTime?       @map("delivered_at")
+  readAt            DateTime?       @map("read_at")
+
+  campaign WhatsappCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  guest    Guest            @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([campaignId, guestId])
+  @@index([campaignId])
+  @@index([providerMessageId])
+  @@map("whatsapp_recipients")
 }
 
 // ---------------------------------------------------------------------------
