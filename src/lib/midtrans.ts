@@ -10,6 +10,13 @@ import crypto from "crypto";
 //                                        karena dipakai snap.js untuk render popup.
 //   MIDTRANS_IS_PRODUCTION           -> "true" untuk akun Production, selain itu
 //                                        dianggap Sandbox.
+//   APP_URL                          -> Base URL domain web ini sendiri (mis.
+//                                        https://selaluajak.kurinji.asia). Dipakai
+//                                        untuk X-Override-Notification supaya kalau
+//                                        1 akun Midtrans dipakai bareng beberapa
+//                                        subdomain/web Kurinji, notifikasi tetap
+//                                        terkirim ke webhook web yang benar, bukan
+//                                        ke Notification URL default di dashboard.
 
 const SNAP_TRANSACTION_URL = {
   sandbox: "https://app.sandbox.midtrans.com/snap/v1/transactions",
@@ -35,6 +42,17 @@ export function isMidtransProduction(): boolean {
 // dashboard, begitu juga sebaliknya).
 export function midtransSnapJsUrl(): string {
   return isMidtransProduction() ? SNAP_JS_URL.production : SNAP_JS_URL.sandbox;
+}
+
+// URL webhook milik web INI SENDIRI (bukan web Kurinji lain). Dikirim sebagai
+// X-Override-Notification supaya kalau 1 akun Midtrans dipakai bareng oleh
+// beberapa subdomain (selaluajak.kurinji.asia, kenang.kurinji.asia,
+// music.kurinji.asia), setiap transaksi tetap kirim notifikasi ke webhook
+// web yang benar-benar membuat transaksi itu, bukan ke default dashboard.
+export function ownWebhookUrl(): string | null {
+  const base = process.env.APP_URL;
+  if (!base) return null;
+  return `${base.replace(/\/$/, "")}/api/billing/webhook`;
 }
 
 export type CreateSnapTransactionParams = {
@@ -66,15 +84,24 @@ export async function createSnapTransaction(
   // Midtrans pakai Basic Auth dengan format base64("server_key:") — tanpa password.
   const auth = Buffer.from(`${serverKey}:`).toString("base64");
 
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    Authorization: `Basic ${auth}`,
+  };
+  // Kalau APP_URL diisi, override notification URL supaya notifikasi transaksi
+  // ini pasti balik ke webhook web ini sendiri — penting kalau 1 akun Midtrans
+  // dipakai bareng beberapa subdomain Kurinji.
+  const overrideUrl = ownWebhookUrl();
+  if (overrideUrl) {
+    headers["X-Override-Notification"] = overrideUrl;
+  }
+
   let response: Response;
   try {
     response = await fetch(url, {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: `Basic ${auth}`,
-      },
+      headers,
       body: JSON.stringify({
         transaction_details: {
           order_id: params.orderId,
@@ -170,4 +197,4 @@ export function mapMidtransStatus(
     default:
       return null;
   }
-  }
+}
