@@ -40,11 +40,22 @@ export function InvitationBuilder({ eventId, eventSlug, initialSections, initial
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [themeDrawerOpen, setThemeDrawerOpen] = useState(false);
   const [status, setStatus] = useState<SaveStatus>("idle");
+  // Tab panel ringkas (dipakai di HP & tablet potrait, breakpoint < lg).
+  const [mobilePanel, setMobilePanel] = useState<"layers" | "settings">("layers");
 
   const isFirstRender = useRef(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedSection = useMemo(() => sections.find((s) => s.id === selectedId) ?? null, [sections, selectedId]);
+
+  // Dipakai sebagai pengganti setSelectedId langsung: begitu section
+  // dipilih (dari Layers atau dari klik di Preview), otomatis pindah ke
+  // tab "Pengaturan" di panel ringkas — supaya di HP/tablet potrait user
+  // nggak perlu tap tab manual dulu buat mulai isi form.
+  function selectSection(id: string | null) {
+    setSelectedId(id);
+    if (id) setMobilePanel("settings");
+  }
 
   const usedSingletons = useMemo(() => {
     const set = new Set<SectionType>();
@@ -125,7 +136,7 @@ export function InvitationBuilder({ eventId, eventSlug, initialSections, initial
   function addSection(type: SectionType) {
     const instance = createSectionInstance(type);
     setSections((prev) => [...prev, instance]);
-    setSelectedId(instance.id);
+    selectSection(instance.id);
     setDrawerOpen(false);
   }
 
@@ -173,13 +184,16 @@ export function InvitationBuilder({ eventId, eventSlug, initialSections, initial
         <SaveIndicator status={status} />
       </div>
 
-      {/* Body: Layers | Preview | Settings */}
-      <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-[240px_1fr_280px]">
-        <div className="hidden border-r border-champagne-100 bg-white md:block">
+      {/* Body: Layers | Preview | Settings — panel kiri & kanan sama-sama
+          baru tampil sebagai sidebar mulai breakpoint lg, supaya nggak ada
+          celah lebar layar (mis. tablet potrait) di mana salah satu panel
+          hilang tapi yang lain masih tampil. */}
+      <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[240px_1fr_280px]">
+        <div className="hidden border-r border-champagne-100 bg-white lg:block">
           <LayersPanel
             sections={sections}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={selectSection}
             onReorder={setSections}
             onToggleVisible={toggleVisible}
             onDuplicate={duplicateSection}
@@ -194,7 +208,7 @@ export function InvitationBuilder({ eventId, eventSlug, initialSections, initial
           theme={themeConfig}
           device={device}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={selectSection}
         />
 
         <div className="hidden border-l border-champagne-100 bg-white lg:block">
@@ -202,22 +216,50 @@ export function InvitationBuilder({ eventId, eventSlug, initialSections, initial
         </div>
       </div>
 
-      {/* Panel layer & settings versi mobile, ditumpuk di bawah preview */}
-      <div className="grid grid-cols-2 divide-x divide-champagne-100 border-t border-champagne-100 bg-white md:hidden">
-        <div className="max-h-64 overflow-y-auto">
-          <LayersPanel
-            sections={sections}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onReorder={setSections}
-            onToggleVisible={toggleVisible}
-            onDuplicate={duplicateSection}
-            onDelete={deleteSection}
-            onOpenAddSection={() => setDrawerOpen(true)}
-          />
+      {/* Panel ringkas untuk layar < lg (HP & tablet potrait): mode tab
+          full-width setinggi 45% layar, jauh lebih lega buat discroll &
+          isi form (foto upload, dst) dibanding versi 2-kolom sempit
+          sebelumnya. */}
+      <div className="flex h-[45vh] flex-col border-t border-champagne-100 bg-white lg:hidden">
+        <div className="flex shrink-0 border-b border-champagne-100">
+          <button
+            onClick={() => setMobilePanel("layers")}
+            className={cn(
+              "flex-1 py-2.5 text-sm font-medium transition",
+              mobilePanel === "layers"
+                ? "border-b-2 border-forest-600 text-forest-700"
+                : "text-slate-400 hover:text-forest-600",
+            )}
+          >
+            Sections
+          </button>
+          <button
+            onClick={() => setMobilePanel("settings")}
+            className={cn(
+              "flex-1 py-2.5 text-sm font-medium transition",
+              mobilePanel === "settings"
+                ? "border-b-2 border-forest-600 text-forest-700"
+                : "text-slate-400 hover:text-forest-600",
+            )}
+          >
+            Pengaturan
+          </button>
         </div>
-        <div className="max-h-64 overflow-y-auto">
-          <SectionSettingsPanel eventId={eventId} section={selectedSection} onChange={updateSectionData} />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {mobilePanel === "layers" ? (
+            <LayersPanel
+              sections={sections}
+              selectedId={selectedId}
+              onSelect={selectSection}
+              onReorder={setSections}
+              onToggleVisible={toggleVisible}
+              onDuplicate={duplicateSection}
+              onDelete={deleteSection}
+              onOpenAddSection={() => setDrawerOpen(true)}
+            />
+          ) : (
+            <SectionSettingsPanel eventId={eventId} section={selectedSection} onChange={updateSectionData} />
+          )}
         </div>
       </div>
 
