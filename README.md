@@ -217,40 +217,58 @@ Belum tercakup dari BAB 10: Custom CSS, gating template Premium ke paket
 langganan tertentu, AI Copy/Theme Assistant, dan Version History (10.15,
 roadmap Future Development).
 
+## Payment Gateway (Midtrans Snap)
+
+Pembayaran sungguhan (VA, QRIS, Kartu Kredit/Debit, E-Wallet — BAB 18.6)
+**sudah aktif di Production** untuk `selaluajak.kurinji.asia`. Tombol "Bayar
+Sekarang" di `/dashboard/billing` (`PayInvoiceButton`) otomatis muncul begitu
+`MIDTRANS_SERVER_KEY` terisi di environment; kalau belum diisi (mis.
+development lokal), halaman jatuh ke tombol "Simulasikan Pembayaran
+Berhasil" supaya alur tetap bisa dites tanpa akun Midtrans.
+
+Env yang dipakai — isi semuanya di Vercel Project Settings → Environment
+Variables (lihat `src/lib/midtrans.ts` untuk detail implementasi):
+
+- `MIDTRANS_SERVER_KEY`, `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` — dari Midtrans
+  Dashboard → Settings → Access Keys.
+- `MIDTRANS_IS_PRODUCTION` — **wajib disamakan** dengan jenis key yang
+  diisi: `"true"` kalau key Production (tanpa prefix `SB-`), atau
+  `"false"`/kosong kalau masih key Sandbox (prefix `SB-Mid-server-...` /
+  `SB-Mid-client-...`). Kalau tidak cocok, request diarahkan ke endpoint
+  Midtrans yang salah dan transaksi ditolak.
+- `APP_URL` — base URL domain **Selalu Ajak sendiri**
+  (`https://selaluajak.kurinji.asia`), dipakai untuk mengirim header
+  `X-Override-Notification` ke Midtrans.
+
+> **Catatan multi-web Kurinji**: akun Midtrans ini dipakai bareng oleh web
+> Kurinji lain, dan Payment Notification URL default di Midtrans Dashboard
+> saat ini terdaftar milik **Kenang Kurinji**, bukan Selalu Ajak — ini
+> aman selama `APP_URL` di atas terisi benar. Header
+> `X-Override-Notification` yang dikirim tiap kali membuat transaksi baru
+> memaksa Midtrans mengirim notifikasi pembayaran ke webhook
+> `{APP_URL}/api/billing/webhook` milik Selalu Ajak, terlepas dari
+> Notification URL default di Dashboard. Kalau `APP_URL` sampai kosong,
+> override ini tidak terkirim dan invoice Selalu Ajak **tidak akan pernah**
+> otomatis berubah jadi PAID walau user sudah bayar — gagalnya senyap,
+> tanpa error yang terlihat.
+> Sandbox dan Production juga punya setting Notification URL terpisah di
+> Dashboard Midtrans, tidak otomatis ikut satu sama lain.
+
+Setelah env terisi, tes alur end-to-end sekali: upgrade paket → bayar
+(pakai [kartu test Sandbox](https://docs.midtrans.com/docs/testing-payment-on-sandbox)
+kalau masih pakai key Sandbox) → pastikan invoice di `/dashboard/billing`
+otomatis berubah **PAID** dan status langganan jadi **Aktif**, bukan cuma
+popup Snap-nya yang berhasil.
+
 ## Langkah selanjutnya
 
-1. Isi `MIDTRANS_SERVER_KEY`, `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`, `APP_URL`, dan
-   `MIDTRANS_IS_PRODUCTION` untuk mengaktifkan pembayaran Midtrans Snap
-   sungguhan di Subscription & Billing (BAB 18.6) — lihat `src/lib/midtrans.ts`,
-   `/api/billing/checkout`, dan `/api/billing/webhook`.
-
-   > **Sandbox vs Production**: `MIDTRANS_IS_PRODUCTION` wajib disamakan
-   > dengan jenis key yang diisi — `"true"` kalau `MIDTRANS_SERVER_KEY` &
-   > `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` adalah Production key (tanpa prefix
-   > `SB-`), atau `"false"`/kosong kalau masih Sandbox key (prefix
-   > `SB-Mid-server-...` / `SB-Mid-client-...`). Kalau kedua hal ini tidak
-   > cocok (mis. Production key tapi flag masih `false`), request akan
-   > diarahkan ke endpoint Midtrans yang salah dan transaksi akan ditolak.
-   > Payment Notification URL di Midtrans Dashboard juga perlu didaftarkan di
-   > mode yang sesuai (Sandbox atau Production) — kedua mode punya setting
-   > terpisah, tidak otomatis ikut satu sama lain.
-
-   > **Catatan multi-web Kurinji**: kalau 1 akun Midtrans ini dipakai bareng
-   > oleh web Kurinji lain (mis. `kenang.kurinji.asia`, `music.kurinji.asia`),
-   > `MIDTRANS_SERVER_KEY`, `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`, dan
-   > `MIDTRANS_IS_PRODUCTION` boleh sama di semua web, tapi `APP_URL`
-   > **wajib beda-beda per web** — isi dengan domain web itu sendiri (mis.
-   > `https://selaluajak.kurinji.asia` di project ini). Nilai ini dipakai
-   > untuk mengirim header `X-Override-Notification` ke Midtrans supaya
-   > notifikasi pembayaran selalu balik ke webhook web yang benar-benar
-   > membuat transaksinya, bukan ke Notification URL default di dashboard.
-2. Gating **template Premium**: saat ini badge "Premium" di pemilihan template
+1. Gating **template Premium**: saat ini badge "Premium" di pemilihan template
    (`/dashboard/events`) baru bersifat visual — belum ada pengecekan paket
    langganan (`PLANS.*`) yang memblokir user paket gratis memilih template
    Premium. Tambahkan pengecekan itu di `createEvent`
    (`src/app/dashboard/events/page.tsx`), mirip pola `getEventUsage`.
-3. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
-4. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
+2. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
+3. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
    pindahkan proses kirim di `POST /api/whatsapp/campaigns/[id]/send` dari
    loop sinkron ke queue/background job — saat ini dibatasi durasi function
    Vercel (`maxDuration = 60`).
