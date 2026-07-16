@@ -53,14 +53,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const subscription = await getOrCreateSubscription(session.user.id);
-  if (!PLANS[subscription.plan].whatsappBlast) {
-    return NextResponse.json(
-      {
-        error: `WhatsApp Blast tidak tersedia di paket Anda saat ini. Upgrade ke ${PLANS.PREMIUM.label} atau ${PLANS.ULTIMATE.label} untuk mengirim kampanye.`,
-      },
-      { status: 403 },
-    );
-  }
 
   if (!process.env.WHATSAPP_API_TOKEN) {
     return NextResponse.json(
@@ -70,6 +62,19 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const guests = await prisma.guest.findMany({ where: { eventId: campaign.eventId } });
+
+  // BAB 18.3 — batas jumlah pesan per kampanye sesuai paket langganan
+  // (Kuncup 100 / Mekar 500 / Kurinji 2.000). Semua paket boleh pakai
+  // WhatsApp Blast, cuma beda kuota per sekali kirim.
+  const messageLimit = PLANS[subscription.plan].whatsappMessageLimit;
+  if (guests.length > messageLimit) {
+    return NextResponse.json(
+      {
+        error: `Kampanye ini punya ${guests.length} penerima, melebihi kuota paket ${PLANS[subscription.plan].label} (maks. ${messageLimit.toLocaleString("id-ID")} pesan/kampanye). Upgrade paket untuk mengirim ke lebih banyak tamu sekaligus.`,
+      },
+      { status: 403 },
+    );
+  }
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://selaluajak.kurinji.asia").replace(/\/$/, "");
   const linkUndangan = `${appUrl}/i/${campaign.event.slug}`;
