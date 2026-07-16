@@ -5,19 +5,19 @@ import { getEventUsage } from "@/lib/subscription";
 import { PLANS, PLAN_ORDER } from "@/lib/plans";
 import { formatDateID, formatRupiah, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { PayInvoiceButton } from "@/components/dashboard/PayInvoiceButton";
+import { isMidtransConfigured, midtransSnapJsUrl } from "@/lib/midtrans";
 import type { Plan } from "@prisma/client";
 
 // BAB 18 — Subscription & Billing
 //
-// Catatan penting: modul ini adalah fondasi (scaffold) untuk billing,
-// mengikuti pola yang sama seperti WhatsApp Blast (BAB 13) — alur data dan
-// tabel sudah lengkap sesuai BAB 18.5 (Pilih Paket → Konfirmasi → Metode
-// Pembayaran → Pembayaran Berhasil → Langganan Aktif), tapi pembayaran
-// sungguhan memerlukan integrasi payment gateway (Virtual Account, QRIS,
-// Kartu Kredit/Debit, E-Wallet — lihat BAB 18.6) yang belum terhubung.
-// Tombol "Simulasikan Pembayaran Berhasil" di bawah ini menggantikan
-// webhook payment gateway untuk sementara, supaya alur end-to-end tetap
-// bisa dites dan datanya konsisten begitu gateway asli dipasang.
+// Pembayaran sungguhan (Virtual Account, QRIS, Kartu Kredit/Debit, E-Wallet
+// — BAB 18.6) lewat Midtrans Snap aktif otomatis begitu `MIDTRANS_SERVER_KEY`
+// terisi di environment (lihat `isMidtransConfigured()` & `PayInvoiceButton`).
+// Kalau environment tertentu belum diisi kunci Midtrans (mis. development
+// lokal), halaman ini jatuh ke tombol "Simulasikan Pembayaran Berhasil" yang
+// menggantikan webhook payment gateway, supaya alur end-to-end tetap bisa
+// dites tanpa akun Midtrans.
 
 async function requestUpgrade(formData: FormData) {
   "use server";
@@ -183,12 +183,20 @@ export default async function BillingPage() {
               {formatRupiah(pendingInvoice.amount)}.
             </p>
             <div className="mt-3 flex gap-2">
-              <form action={markInvoicePaid}>
-                <input type="hidden" name="invoiceId" value={pendingInvoice.id} />
-                <Button type="submit" variant="primary">
-                  Simulasikan Pembayaran Berhasil
-                </Button>
-              </form>
+              {isMidtransConfigured() ? (
+                <PayInvoiceButton
+                  invoiceId={pendingInvoice.id}
+                  snapJsUrl={midtransSnapJsUrl()}
+                  clientKey={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY ?? ""}
+                />
+              ) : (
+                <form action={markInvoicePaid}>
+                  <input type="hidden" name="invoiceId" value={pendingInvoice.id} />
+                  <Button type="submit" variant="primary">
+                    Simulasikan Pembayaran Berhasil
+                  </Button>
+                </form>
+              )}
               <form action={cancelInvoice}>
                 <input type="hidden" name="invoiceId" value={pendingInvoice.id} />
                 <Button type="submit" variant="ghost">
@@ -309,4 +317,4 @@ export default async function BillingPage() {
       </section>
     </div>
   );
-      }
+}
