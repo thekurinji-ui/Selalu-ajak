@@ -1,7 +1,6 @@
 // BAB 18.3 & 18.4 — Paket Langganan & Perbandingan Paket
-// Nilai harga dan batasan di sini adalah nilai awal (placeholder) yang bisa
-// disesuaikan kapan saja tanpa mengubah struktur database, karena hanya
-// dipakai sebagai konfigurasi aplikasi (bukan disimpan di DB).
+// Nama paket mengikuti tema Kurinji (bunga yang mekar sekali dalam belasan
+// tahun, ikonik untuk The Kurinji): Kuncup (gratis) -> Mekar -> Kurinji.
 
 import type { Plan } from "@prisma/client";
 
@@ -21,10 +20,14 @@ export type PlanConfig = {
   storage: string;
 };
 
+// Catatan: `key` tetap memakai nilai enum Prisma (BASIC/PREMIUM/ULTIMATE) —
+// ini sudah dipakai sebagai nilai kolom di database (Subscription.plan,
+// Invoice.plan), jadi tidak diubah supaya tidak perlu migration/backfill.
+// Yang berubah cuma `label` (nama yang tampil ke user).
 export const PLANS: Record<Plan, PlanConfig> = {
   BASIC: {
     key: "BASIC",
-    label: "Basic",
+    label: "Kuncup",
     price: 0,
     tagline: "Cocok untuk mencoba layanan.",
     maxEvents: 1,
@@ -39,7 +42,7 @@ export const PLANS: Record<Plan, PlanConfig> = {
   },
   PREMIUM: {
     key: "PREMIUM",
-    label: "Premium",
+    label: "Mekar",
     price: 149000,
     tagline: "Paket utama yang direkomendasikan.",
     maxEvents: 5,
@@ -54,8 +57,8 @@ export const PLANS: Record<Plan, PlanConfig> = {
   },
   ULTIMATE: {
     key: "ULTIMATE",
-    label: "Ultimate",
-    price: 399000,
+    label: "Kurinji",
+    price: 299000,
     tagline: "Untuk profesional, WO, maupun EO.",
     maxEvents: 999,
     maxGuestsPerEvent: 999999,
