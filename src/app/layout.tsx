@@ -8,6 +8,7 @@ import {
   Nunito,
   Cinzel,
   Work_Sans,
+  Bebas_Neue,
 } from "next/font/google";
 import "./globals.css";
 
@@ -58,6 +59,14 @@ const workSans = Work_Sans({
   variable: "--font-work-sans",
   display: "swap",
 });
+// Font bold-condensed untuk preset "Sinema Malam" (BAB 10.6) — kesan dramatis
+// ala poster film / platform streaming.
+const bebasNeue = Bebas_Neue({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-bebas",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Selalu Ajak — Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.",
@@ -74,6 +83,7 @@ const fontVariables = [
   nunito.variable,
   cinzel.variable,
   workSans.variable,
+  bebasNeue.variable,
 ].join(" ");
 
 export default function RootLayout({
