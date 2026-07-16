@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
-import { PLANS, PLAN_ORDER } from "@/lib/plans";
+import { PLANS, PLAN_ORDER, PLAN_FEATURES } from "@/lib/plans";
 import { formatRupiah, cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 
@@ -133,15 +133,15 @@ export default async function LandingPage() {
                   </p>
 
                   <ul className="mt-6 space-y-1.5 text-sm text-slate-600">
-                    <li>• {p.maxEvents} acara aktif</li>
-                    <li>• Hingga {p.maxGuestsPerEvent.toLocaleString("id-ID")} tamu/acara</li>
-                    <li>• Template Premium: {p.premiumTemplates ? "Ya" : "Tidak"}</li>
-                    <li>• WhatsApp Blast: {p.whatsappBlast ? "Ya" : "Tidak"}</li>
-                    <li>• QR Check-in: {p.qrCheckin ? "Ya" : "Tidak"}</li>
-                    <li>• Digital Gift: {p.digitalGift ? "Ya" : "Tidak"}</li>
-                    <li>• Analytics: {p.analytics}</li>
-                    <li>• Penyimpanan Media: {p.storage}</li>
-                    <li>• Dukungan: {p.support}</li>
+                    <li>• {p.maxEvents === 999 ? "Acara aktif tanpa batas" : `${p.maxEvents} acara aktif`}</li>
+                    {PLAN_FEATURES.slice(0, 5).map((row) => (
+                      <li key={row.label}>
+                        •{" "}
+                        {typeof row.values[key] === "boolean"
+                          ? row.label
+                          : `${row.label}: ${row.values[key]}`}
+                      </li>
+                    ))}
                   </ul>
 
                   <Link
@@ -158,6 +158,43 @@ export default async function LandingPage() {
                 </div>
               );
             })}
+          </div>
+
+          {/* Tabel perbandingan lengkap — sumber datanya sama persis dengan
+              kartu di atas & halaman Billing (PLAN_FEATURES di lib/plans.ts). */}
+          <div className="mt-14 overflow-x-auto rounded-lg border border-champagne-100 bg-white shadow-soft">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b border-champagne-100 text-slate-600">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Fitur</th>
+                  {PLAN_ORDER.map((key) => (
+                    <th key={key} className="px-4 py-3 text-center font-heading font-semibold text-forest-700">
+                      {PLANS[key].label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-champagne-50">
+                  <td className="px-4 py-3 font-medium text-slate-700">Harga</td>
+                  {PLAN_ORDER.map((key) => (
+                    <td key={key} className="px-4 py-3 text-center text-slate-600">
+                      {formatRupiah(PLANS[key].price)}
+                    </td>
+                  ))}
+                </tr>
+                {PLAN_FEATURES.map((row) => (
+                  <tr key={row.label} className="border-b border-champagne-50 last:border-0">
+                    <td className="px-4 py-3 font-medium text-slate-700">{row.label}</td>
+                    {PLAN_ORDER.map((key) => (
+                      <td key={key} className="px-4 py-3 text-center text-slate-600">
+                        {typeof row.values[key] === "boolean" ? (row.values[key] ? "✅" : "❌") : row.values[key]}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
