@@ -48,7 +48,7 @@ export default async function WhatsappPage({ searchParams }: { searchParams: { e
     getOrCreateSubscription(session.user.id),
   ]);
   const activeEventId = searchParams.eventId ?? events[0]?.id;
-  const canBlast = PLANS[subscription.plan].whatsappBlast;
+  const messageLimit = PLANS[subscription.plan].whatsappMessageLimit;
 
   const campaigns = activeEventId
     ? await prisma.whatsappCampaign.findMany({
@@ -71,13 +71,11 @@ export default async function WhatsappPage({ searchParams }: { searchParams: { e
         dalam status &ldquo;Connected&rdquo; sebelum mengirim kampanye.
       </p>
 
-      {!canBlast && (
-        <div className="mt-4 rounded-lg border border-champagne-200 bg-champagne-50 px-4 py-3 text-sm text-champagne-800">
-          WhatsApp Blast tidak tersedia di paket <strong>{PLANS[subscription.plan].label}</strong> Anda. Anda
-          tetap bisa menyimpan draf kampanye di bawah, tapi perlu upgrade ke Premium atau Ultimate untuk
-          benar-benar mengirimkannya.
-        </div>
-      )}
+      <div className="mt-4 rounded-lg border border-champagne-200 bg-champagne-50 px-4 py-3 text-sm text-champagne-800">
+        Kuota kirim paket <strong>{PLANS[subscription.plan].label}</strong> Anda: maks.{" "}
+        <strong>{messageLimit.toLocaleString("id-ID")} penerima per kampanye</strong>. Kampanye dengan
+        penerima lebih banyak dari itu perlu upgrade paket dulu untuk bisa dikirim.
+      </div>
 
       <form
         action={createCampaign}
@@ -125,9 +123,14 @@ export default async function WhatsappPage({ searchParams }: { searchParams: { e
                   )}
                 </div>
               </div>
-              {c.status === "MENUNGGU" && canBlast && (
-                <SendCampaignButton campaignId={c.id} recipientCount={c.recipientCount} />
-              )}
+              {c.status === "MENUNGGU" &&
+                (c.recipientCount <= messageLimit ? (
+                  <SendCampaignButton campaignId={c.id} recipientCount={c.recipientCount} />
+                ) : (
+                  <span className="text-xs font-medium text-red-600">
+                    Melebihi kuota paket (maks. {messageLimit.toLocaleString("id-ID")}) — upgrade untuk kirim
+                  </span>
+                ))}
             </div>
 
             {c.recipients.length > 0 && (
