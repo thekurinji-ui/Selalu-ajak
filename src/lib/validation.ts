@@ -26,6 +26,13 @@ export const eventSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   description: z.string().optional(),
+  // BAB Template Management — opsional, id InvitationTemplate yang dipilih
+  // user saat membuat acara. String kosong dari <select> dianggap "tanpa
+  // template" (mulai dari kanvas kosong seperti sebelumnya).
+  templateId: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : undefined)),
 });
 
 // BAB 11.4 — Tambah Tamu
