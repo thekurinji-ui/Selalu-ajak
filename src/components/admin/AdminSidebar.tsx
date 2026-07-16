@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   ScrollText,
   ArrowLeftCircle,
   LayoutTemplate,
+  LogOut,
 } from "lucide-react";
 
 // BAB 21.3–21.11 — Struktur Admin Console
@@ -58,6 +60,14 @@ export function AdminSidebar() {
           <ArrowLeftCircle size={18} />
           Kembali ke Dashboard
         </Link>
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="mt-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
+        >
+          <LogOut size={18} />
+          Logout
+        </button>
       </nav>
     </aside>
   );
