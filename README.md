@@ -30,6 +30,12 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
   (BAB 10.3–10.9)
 - ✅ Event Website publik `/i/{slug}` — render dinamis dari `sections`,
   dengan personalisasi `?to=Nama` (BAB 10, 17)
+- ✅ **Theme System** — ganti warna, kombinasi font, dan background tema
+  langsung dari Invitation Builder lewat `ThemeDrawer`, tanpa mengubah
+  struktur section (BAB 10.6–10.7). Preset tema didefinisikan di
+  `src/lib/invitation-themes.ts`, diterapkan lewat CSS variable oleh
+  `ThemeProvider` — dipakai bersama oleh Live Preview & halaman publik
+  `/i/{slug}` supaya hasilnya selalu identik
 - ✅ Guest Management (BAB 11)
 - ✅ RSVP Management (BAB 12)
 - ✅ **WhatsApp Blast** — pengiriman sungguhan sudah tersambung ke
@@ -50,14 +56,21 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
   environment tertentu (mis. saat development lokal), otomatis jatuh ke
   tombol simulasi supaya tetap bisa dites tanpa akun Midtrans
 - ✅ **Admin Console** — dashboard ringkasan platform, kelola Users, Events,
-  Subscriptions, dan Audit Log, dilindungi `requireAdmin()` guard (BAB 21)
+  Template Undangan, Subscriptions, dan Audit Log, dilindungi `requireAdmin()`
+  guard (BAB 21)
+- 🚧 **Template Marketplace (katalog)** — Admin/Content Manager sudah bisa
+  kelola katalog template (`InvitationTemplate`: upload thumbnail, preview
+  images, default sections, status Draft/Published/Archived, tandai Premium)
+  lewat `/admin/templates`. **Belum terhubung ke alur user** — saat bikin
+  event baru, user belum bisa memilih template dari katalog ini (`Event.
+  templateId` baru dipakai di sisi admin)
 - ✅ Skema database lengkap untuk Notification (BAB 20, 22) — UI-nya menyusul
   di Phase 2
 
 Belum termasuk (lihat roadmap BAB 29 di blueprint): integrasi sungguhan
-WhatsApp Business API (masih pakai Fonnte, gateway non-resmi), Theme System
-visual (BAB 10.6 — saat ini satu tema default), integrasi otomatis ke Kenang
-Kurinji, dan fitur AI.
+WhatsApp Business API (masih pakai Fonnte, gateway non-resmi), koneksi
+Template Marketplace ke alur pembuatan event user, integrasi otomatis ke
+Kenang Kurinji, dan fitur AI.
 
 ## Tech stack
 
@@ -92,6 +105,47 @@ npm run dev
 
 Buka `http://localhost:3000`.
 
+## Deploy & migrasi database (Vercel + Neon)
+
+Build command di `package.json` menjalankan `prisma migrate deploy`, **bukan**
+`prisma db push`. Bedanya penting: `migrate deploy` hanya menerapkan file
+migration yang sudah di-commit ke folder `prisma/migrations/`, secara
+terurut dan tanpa pernah menghapus data di luar yang memang diminta migration
+tersebut. Ini yang dipakai di Production (`selaluajak.kurinji.asia`, database
+Neon) supaya perubahan schema selalu tercatat jejaknya dan tidak ada
+kejutan data hilang saat deploy.
+
+**Setiap kali `prisma/schema.prisma` diubah**, alurnya:
+
+```bash
+# 1. Di lokal, pastikan .env mengarah ke database development (bukan Neon
+#    production), lalu buat migration baru dari perubahan schema
+npx prisma migrate dev --name deskripsi_singkat_perubahan
+
+# 2. Commit folder migration yang baru muncul
+git add prisma/migrations
+git commit -m "chore: migration - deskripsi_singkat_perubahan"
+git push
+```
+
+Begitu di-push, Vercel otomatis menjalankan `prisma migrate deploy` sebagai
+bagian dari build, menerapkan migration baru itu ke Neon secara aman.
+
+> **Catatan `DATABASE_URL` vs `DIRECT_URL`**: di environment variables Vercel,
+> `DATABASE_URL` sebaiknya connection string Neon yang **pooled** (hostname
+> mengandung `-pooler`, lewat PgBouncer — dipakai runtime app), sedangkan
+> `DIRECT_URL` connection string **non-pooled** (dipakai Prisma khusus saat
+> menjalankan migration, karena DDL butuh koneksi langsung).
+
+> **Migration baseline**: repo ini sebelumnya sempat memakai
+> `prisma db push --accept-data-loss` sebelum pindah ke `migrate deploy`.
+> Kalau suatu saat clone ulang dari database Neon yang sudah berisi data
+> tanpa histori migration, baseline dulu dengan
+> `npx prisma migrate dev --name init --create-only` lalu
+> `npx prisma migrate resolve --applied "<nama_migration>"` sebelum push —
+> supaya Prisma tahu schema saat ini sudah sesuai tanpa mencoba
+> membuat ulang tabel yang sudah ada.
+
 ## Struktur folder
 
 Mengikuti Information Architecture di BAB 5 blueprint:
@@ -123,9 +177,9 @@ schema.prisma                       # BAB 24 — Database Design
 ## Skema database
 
 Lihat `prisma/schema.prisma` — entity utama: `User`, `Event`, `InvitationPage`,
-`Guest`, `Rsvp`, `CheckIn`, `WhatsappCampaign`, `DigitalGift`, `Subscription`,
-`Invoice`, `Notification`, `AuditLog`, `AnalyticsEvent` — sesuai relasi di BAB
-24.5.
+`InvitationTemplate`, `Guest`, `Rsvp`, `CheckIn`, `WhatsappCampaign`,
+`DigitalGift`, `Subscription`, `Invoice`, `Notification`, `AuditLog`,
+`AnalyticsEvent` — sesuai relasi di BAB 24.5.
 
 ## Invitation Builder (BAB 10)
 
@@ -147,10 +201,21 @@ kolom `InvitationPage.sections: Json`. Diakses lewat
 - Halaman publik `/i/{slug}` merender section yang sama persis (komponen
   `SectionRenderer` dipakai bersama oleh builder & halaman publik), jadi Live
   Preview selalu identik dengan hasil akhir.
+- **Theme System** (10.6–10.7) — `ThemeDrawer` menampilkan preset tema (warna
+  + pasangan font) yang bisa dipilih atau dikustomisasi per-warna, disimpan
+  di field tema pada `Event` dan ikut Auto Save. `ThemeProvider` menyuntikkan
+  variabel CSS `--sa-*` yang dipakai token Tailwind `theme-*`, jadi seluruh
+  section otomatis ikut berubah tanpa logika tambahan per-komponen.
 
-Belum tercakup dari BAB 10: Theme System visual (10.6 — ganti tema/warna/font
-sekaligus), Custom CSS, Marketplace template, AI Copy/Theme Assistant, dan
-Version History (10.15, roadmap Future Development).
+Ada juga `HeritageOriginalTheme` (`src/components/invitation-themes/`) —
+tema custom-designed yang bisa dilihat previewnya di `/tema/heritage-original`,
+tapi **masih statis** (pakai data contoh, belum dipetakan dari
+`InvitationPage.sections` atau data `Event`/`Guest` asli).
+
+Belum tercakup dari BAB 10: Custom CSS, integrasi Template Marketplace ke
+alur pembuatan event (katalognya sudah ada di Admin Console, lihat di atas),
+AI Copy/Theme Assistant, dan Version History (10.15, roadmap Future
+Development).
 
 ## Langkah selanjutnya
 
@@ -179,8 +244,10 @@ Version History (10.15, roadmap Future Development).
    > untuk mengirim header `X-Override-Notification` ke Midtrans supaya
    > notifikasi pembayaran selalu balik ke webhook web yang benar-benar
    > membuat transaksinya, bukan ke Notification URL default di dashboard.
-2. Bangun Theme System visual (BAB 10.6–10.7) — ganti warna, font, dan
-   background tema langsung dari Invitation Builder.
+2. Hubungkan **Template Marketplace** ke alur pembuatan event: tambahkan UI
+   pemilihan template (dari katalog `/admin/templates`) saat user membuat
+   event baru, yang otomatis mengisi `InvitationPage.sections` awal dari
+   `InvitationTemplate.defaultSections` template terpilih.
 3. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
 4. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
    pindahkan proses kirim di `POST /api/whatsapp/campaigns/[id]/send` dari
