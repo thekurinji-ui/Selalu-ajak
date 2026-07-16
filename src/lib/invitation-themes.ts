@@ -116,6 +116,24 @@ export const THEME_PRESETS: ThemePreset[] = [
     },
     fontId: "cinzel-work",
   },
+  {
+    id: "cinematic-dark",
+    label: "Sinema Malam",
+    description:
+      "Dark mode dramatis dengan aksen merah menyala — terinspirasi tampilan platform streaming film, cocok untuk movie-night theme atau after-party.",
+    colors: {
+      primary: "#E50914",
+      primaryDark: "#B00710",
+      secondary: "#F5C518",
+      secondaryDark: "#C9A012",
+      background: "#141414",
+      surface: "#1F1F1F",
+      text: "#FFFFFF",
+      muted: "#B3B3B3",
+      border: "#333333",
+    },
+    fontId: "bebas-inter",
+  },
 ];
 
 export const DEFAULT_THEME_ID = "elegant";
@@ -161,6 +179,12 @@ export const FONT_PAIRS: Record<string, FontPair> = {
     label: "Cinzel & Work Sans",
     heading: "var(--font-cinzel), serif",
     body: "var(--font-work-sans), sans-serif",
+  },
+  "bebas-inter": {
+    id: "bebas-inter",
+    label: "Bebas Neue & Inter",
+    heading: "var(--font-bebas), sans-serif",
+    body: "var(--font-inter), sans-serif",
   },
 };
 
