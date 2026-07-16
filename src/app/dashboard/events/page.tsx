@@ -24,11 +24,22 @@ async function createEvent(formData: FormData) {
     type: formData.get("type"),
     date: formData.get("date") || undefined,
     city: formData.get("city") || undefined,
+    templateId: formData.get("templateId") || undefined,
   });
 
   if (!parsed.success) return;
 
   const slug = await generateUniqueEventSlug(parsed.data.name);
+
+  // Template Marketplace — kalau user memilih template, pakai
+  // `defaultSections` & `primaryColor` template itu sebagai titik awal
+  // Invitation Builder, bukan kanvas kosong. Template DRAFT/ARCHIVED tetap
+  // divalidasi ulang di server (bukan cuma percaya <select> di client).
+  const template = parsed.data.templateId
+    ? await prisma.invitationTemplate.findFirst({
+        where: { id: parsed.data.templateId, status: "PUBLISHED" },
+      })
+    : null;
 
   const event = await prisma.event.create({
     data: {
@@ -38,9 +49,20 @@ async function createEvent(formData: FormData) {
       date: parsed.data.date,
       city: parsed.data.city,
       slug,
-      invitationPage: { create: { sections: [] } },
+      templateId: template?.id,
+      ...(template?.primaryColor ? { primaryColor: template.primaryColor } : {}),
+      invitationPage: {
+        create: { sections: template?.defaultSections ?? [] },
+      },
     },
   });
+
+  if (template) {
+    await prisma.invitationTemplate.update({
+      where: { id: template.id },
+      data: { usageCount: { increment: 1 } },
+    });
+  }
 
   redirect(`/dashboard/events/${event.id}`);
 }
@@ -51,12 +73,18 @@ export default async function EventsPage({
   searchParams: { error?: string };
 }) {
   const session = await auth();
-  const events = session?.user?.id
-    ? await prisma.event.findMany({
-        where: { userId: session.user.id },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
+  const [events, templates] = session?.user?.id
+    ? await Promise.all([
+        prisma.event.findMany({
+          where: { userId: session.user.id },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.invitationTemplate.findMany({
+          where: { status: "PUBLISHED" },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+        }),
+      ])
+    : [[], []];
 
   return (
     <div>
@@ -104,6 +132,45 @@ export default async function EventsPage({
           <label className="mb-1 block text-sm font-medium text-slate-700">Kota</label>
           <Input name="city" placeholder="Jakarta" />
         </div>
+
+        {templates.length > 0 && (
+          <div className="sm:col-span-2">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Pilih Template (opsional)
+            </label>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="flex cursor-pointer flex-col overflow-hidden rounded-md border border-champagne-200 has-[:checked]:border-forest-600 has-[:checked]:ring-2 has-[:checked]:ring-forest-600">
+                <input type="radio" name="templateId" value="" defaultChecked className="sr-only" />
+                <div className="flex aspect-[3/4] items-center justify-center bg-champagne-50 text-xs text-slate-400">
+                  Kanvas Kosong
+                </div>
+                <span className="px-2 py-2 text-xs font-medium text-slate-600">Mulai dari kosong</span>
+              </label>
+              {templates.map((t) => (
+                <label
+                  key={t.id}
+                  className="flex cursor-pointer flex-col overflow-hidden rounded-md border border-champagne-200 has-[:checked]:border-forest-600 has-[:checked]:ring-2 has-[:checked]:ring-forest-600"
+                >
+                  <input type="radio" name="templateId" value={t.id} className="sr-only" />
+                  <img
+                    src={t.thumbnailUrl}
+                    alt={t.name}
+                    className="aspect-[3/4] w-full object-cover"
+                  />
+                  <span className="flex items-center justify-between gap-1 px-2 py-2 text-xs font-medium text-slate-600">
+                    {t.name}
+                    {t.isPremium && (
+                      <span className="rounded bg-champagne-100 px-1.5 py-0.5 text-[10px] font-semibold text-champagne-700">
+                        Premium
+                      </span>
+                    )}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="sm:col-span-2">
           <Button type="submit">+ Buat Acara</Button>
         </div>
