@@ -56,8 +56,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!PLANS[subscription.plan].whatsappBlast) {
     return NextResponse.json(
       {
-        error:
-          "WhatsApp Blast tidak tersedia di paket Anda saat ini. Upgrade ke Premium atau Ultimate untuk mengirim kampanye.",
+        error: `WhatsApp Blast tidak tersedia di paket Anda saat ini. Upgrade ke ${PLANS.PREMIUM.label} atau ${PLANS.ULTIMATE.label} untuk mengirim kampanye.`,
       },
       { status: 403 },
     );
@@ -181,4 +180,4 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     failedCount,
     total: guests.length,
   });
-    }
+}
