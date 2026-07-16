@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -15,6 +16,7 @@ import {
   Settings,
   CreditCard,
   ShieldCheck,
+  LogOut,
 } from "lucide-react";
 
 // BAB 8.3 — Struktur Dashboard
@@ -69,6 +71,17 @@ export function Sidebar({ isAdmin = false }: { isAdmin?: boolean }) {
             Admin Console
           </Link>
         )}
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-red-50 hover:text-red-600",
+            isAdmin ? "mt-1" : "mt-4 border-t border-champagne-100 pt-4",
+          )}
+        >
+          <LogOut size={18} />
+          Logout
+        </button>
       </nav>
     </aside>
   );
