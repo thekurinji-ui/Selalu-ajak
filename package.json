@@ -5,7 +5,7 @@
   "description": "Selalu Ajak — Platform manajemen acara digital. Bagian dari ekosistem The Kurinji (bersaudara dengan Kenang Kurinji).",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push --accept-data-loss && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint .",
     "postinstall": "prisma generate",
