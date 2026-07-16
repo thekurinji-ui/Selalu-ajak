@@ -58,19 +58,20 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
 - ✅ **Admin Console** — dashboard ringkasan platform, kelola Users, Events,
   Template Undangan, Subscriptions, dan Audit Log, dilindungi `requireAdmin()`
   guard (BAB 21)
-- 🚧 **Template Marketplace (katalog)** — Admin/Content Manager sudah bisa
-  kelola katalog template (`InvitationTemplate`: upload thumbnail, preview
-  images, default sections, status Draft/Published/Archived, tandai Premium)
-  lewat `/admin/templates`. **Belum terhubung ke alur user** — saat bikin
-  event baru, user belum bisa memilih template dari katalog ini (`Event.
-  templateId` baru dipakai di sisi admin)
+- ✅ **Template Marketplace** — Admin/Content Manager kelola katalog template
+  (`InvitationTemplate`: upload thumbnail, preview images, default sections,
+  status Draft/Published/Archived, tandai Premium) lewat `/admin/templates`.
+  Template berstatus Published tampil sebagai pilihan visual saat user
+  membuat acara baru (`/dashboard/events`) — `InvitationTemplate.
+  defaultSections` & `primaryColor` jadi titik awal Invitation Builder, dan
+  `usageCount` bertambah tiap kali dipakai
 - ✅ Skema database lengkap untuk Notification (BAB 20, 22) — UI-nya menyusul
   di Phase 2
 
 Belum termasuk (lihat roadmap BAB 29 di blueprint): integrasi sungguhan
-WhatsApp Business API (masih pakai Fonnte, gateway non-resmi), koneksi
-Template Marketplace ke alur pembuatan event user, integrasi otomatis ke
-Kenang Kurinji, dan fitur AI.
+WhatsApp Business API (masih pakai Fonnte, gateway non-resmi), gating
+template Premium ke paket langganan tertentu, integrasi otomatis ke Kenang
+Kurinji, dan fitur AI.
 
 ## Tech stack
 
@@ -212,10 +213,9 @@ tema custom-designed yang bisa dilihat previewnya di `/tema/heritage-original`,
 tapi **masih statis** (pakai data contoh, belum dipetakan dari
 `InvitationPage.sections` atau data `Event`/`Guest` asli).
 
-Belum tercakup dari BAB 10: Custom CSS, integrasi Template Marketplace ke
-alur pembuatan event (katalognya sudah ada di Admin Console, lihat di atas),
-AI Copy/Theme Assistant, dan Version History (10.15, roadmap Future
-Development).
+Belum tercakup dari BAB 10: Custom CSS, gating template Premium ke paket
+langganan tertentu, AI Copy/Theme Assistant, dan Version History (10.15,
+roadmap Future Development).
 
 ## Langkah selanjutnya
 
@@ -244,10 +244,11 @@ Development).
    > untuk mengirim header `X-Override-Notification` ke Midtrans supaya
    > notifikasi pembayaran selalu balik ke webhook web yang benar-benar
    > membuat transaksinya, bukan ke Notification URL default di dashboard.
-2. Hubungkan **Template Marketplace** ke alur pembuatan event: tambahkan UI
-   pemilihan template (dari katalog `/admin/templates`) saat user membuat
-   event baru, yang otomatis mengisi `InvitationPage.sections` awal dari
-   `InvitationTemplate.defaultSections` template terpilih.
+2. Gating **template Premium**: saat ini badge "Premium" di pemilihan template
+   (`/dashboard/events`) baru bersifat visual — belum ada pengecekan paket
+   langganan (`PLANS.*`) yang memblokir user paket gratis memilih template
+   Premium. Tambahkan pengecekan itu di `createEvent`
+   (`src/app/dashboard/events/page.tsx`), mirip pola `getEventUsage`.
 3. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
 4. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
    pindahkan proses kirim di `POST /api/whatsapp/campaigns/[id]/send` dari
