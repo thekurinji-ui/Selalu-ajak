@@ -3,6 +3,7 @@ import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
 import { PLANS, PLAN_ORDER } from "@/lib/plans";
 import { formatRupiah, cn } from "@/lib/utils";
+import { prisma } from "@/lib/prisma";
 
 // BAB 6.3.5 — Feature Highlights
 const features = [
@@ -16,7 +17,16 @@ const features = [
   { title: "Integrasi Kenang Kurinji", desc: "Dokumentasi acara tetap hidup setelah hari-H berakhir." },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // Section "Template" di bawah cuma tampil kalau ada template yang sudah
+  // dipublish oleh Admin/Content Manager di /admin/templates — supaya
+  // landing page tidak menampilkan kotak kosong sebelum ada template.
+  const templates = await prisma.invitationTemplate.findMany({
+    where: { status: "PUBLISHED" },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    take: 6,
+  });
+
   return (
     <main>
       <Navbar />
@@ -38,6 +48,53 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
+
+      {templates.length > 0 && (
+        <section id="template" className="mx-auto max-w-6xl px-6 py-20">
+          <h2 className="text-center font-heading text-3xl font-semibold text-forest-700">
+            Template undangan siap pakai
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-center text-slate-600">
+            Pilih salah satu, atau jadikan titik awal lalu sesuaikan lewat
+            Invitation Builder — semua bisa diubah warna, font, dan isi
+            sectionnya.
+          </p>
+
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {templates.map((t) => (
+              <Link
+                key={t.id}
+                href="/register"
+                className="group overflow-hidden rounded-lg border border-champagne-100 bg-white shadow-soft transition hover:shadow-medium"
+              >
+                <div className="relative aspect-[3/4] overflow-hidden bg-champagne-50">
+                  <img
+                    src={t.thumbnailUrl}
+                    alt={t.name}
+                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                  />
+                  {t.isPremium && (
+                    <span className="absolute right-3 top-3 rounded-full bg-champagne-500 px-3 py-1 text-xs font-medium text-forest-900 shadow-soft">
+                      Premium
+                    </span>
+                  )}
+                </div>
+                <div className="p-4">
+                  <p className="font-heading text-base font-medium text-forest-700">{t.name}</p>
+                  {t.description && (
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-500">{t.description}</p>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <p className="mt-8 text-center text-sm text-slate-500">
+            Lebih banyak template tersedia langsung di dalam Invitation
+            Builder setelah Anda mendaftar.
+          </p>
+        </section>
+      )}
 
       <section id="harga" className="bg-champagne-50/40 py-20">
         <div className="mx-auto max-w-6xl px-6">
