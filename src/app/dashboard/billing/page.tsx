@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getEventUsage } from "@/lib/subscription";
-import { PLANS, PLAN_ORDER } from "@/lib/plans";
+import { PLANS, PLAN_ORDER, PLAN_FEATURES } from "@/lib/plans";
 import { formatDateID, formatRupiah, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PayInvoiceButton } from "@/components/dashboard/PayInvoiceButton";
@@ -231,15 +231,17 @@ export default async function BillingPage() {
                 </p>
 
                 <ul className="mt-4 space-y-1.5 text-sm text-slate-600">
-                  <li>• {p.maxEvents} acara aktif</li>
-                  <li>• Hingga {p.maxGuestsPerEvent.toLocaleString("id-ID")} tamu/acara</li>
-                  <li>• Template Premium: {p.premiumTemplates ? "Ya" : "Tidak"}</li>
-                  <li>• WhatsApp Blast: {p.whatsappBlast ? "Ya" : "Tidak"}</li>
-                  <li>• QR Check-in: {p.qrCheckin ? "Ya" : "Tidak"}</li>
-                  <li>• Digital Gift: {p.digitalGift ? "Ya" : "Tidak"}</li>
-                  <li>• Analytics: {p.analytics}</li>
-                  <li>• Penyimpanan Media: {p.storage}</li>
-                  <li>• Dukungan: {p.support}</li>
+                  <li>• {p.maxEvents === 999 ? "Acara aktif tanpa batas" : `${p.maxEvents} acara aktif`}</li>
+                  {PLAN_FEATURES.map((row) => (
+                    <li key={row.label}>
+                      • {row.label}:{" "}
+                      {typeof row.values[key] === "boolean" ? (
+                        row.values[key] ? "✅" : "❌"
+                      ) : (
+                        row.values[key]
+                      )}
+                    </li>
+                  ))}
                 </ul>
 
                 <div className="mt-6">
