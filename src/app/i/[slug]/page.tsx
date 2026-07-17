@@ -14,7 +14,7 @@ export default async function InvitationPage({
   searchParams,
 }: {
   params: { slug: string };
-  searchParams: { to?: string };
+  searchParams: { to?: string; g?: string };
 }) {
   const event = await prisma.event.findUnique({
     where: { slug: params.slug },
@@ -23,7 +23,15 @@ export default async function InvitationPage({
 
   if (!event || event.status !== "PUBLISHED") notFound();
 
-  const guestName = searchParams.to ? decodeURIComponent(searchParams.to) : undefined;
+  // `g` = Guest.qrCode, dikirim lewat link undangan pribadi tamu (WhatsApp
+  // Blast otomatis maupun Kirim Manual via WA Pribadi). Kalau ketemu, ini
+  // sumber personalisasi & tiket QR yang bisa dipercaya (bukan sekadar teks
+  // bebas dari URL kayak `?to=`), karena qrCode-nya unik per tamu.
+  const guest = searchParams.g
+    ? await prisma.guest.findFirst({ where: { qrCode: searchParams.g, eventId: event.id } })
+    : null;
+
+  const guestName = guest?.name ?? (searchParams.to ? decodeURIComponent(searchParams.to) : undefined);
 
   async function submitRsvp(formData: FormData) {
     "use server";
@@ -106,6 +114,27 @@ export default async function InvitationPage({
             onSubmitRsvp={submitRsvp}
           />
         ))}
+
+        {/* BAB 14.2 — Tiket QR Check-in pribadi tamu. Cuma tampil kalau link
+            undangan yang dibuka membawa `?g=` (qrCode tamu) yang valid —
+            supaya QR tiap orang cuma kelihatan lewat link pribadinya sendiri. */}
+        {guest && (
+          <section className="mx-auto max-w-md px-6 py-16 text-center">
+            <h2 className="font-heading text-2xl font-semibold text-forest-700">Tiket Masuk Anda</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Tunjukkan QR ini ke petugas saat check-in di lokasi acara.
+            </p>
+            <div className="mx-auto mt-6 inline-block rounded-lg border border-champagne-200 bg-white p-4 shadow-soft">
+              <img
+                src={`/api/public/qrcode/${guest.qrCode}`}
+                alt={`QR Check-in untuk ${guest.name}`}
+                width={240}
+                height={240}
+              />
+            </div>
+            <p className="mt-3 text-sm font-medium text-forest-700">{guest.name}</p>
+          </section>
+        )}
       </ThemeProvider>
     </main>
   );
