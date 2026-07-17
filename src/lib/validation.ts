@@ -52,6 +52,55 @@ export const rsvpSchema = z.object({
   wishMessage: z.string().max(500).optional(),
 });
 
+// BAB 19.6 — Profil Pengguna
+export const profileSchema = z.object({
+  name: z.string().min(2, "Nama minimal 2 karakter"),
+  whatsappNumber: z.string().optional(),
+  city: z.string().optional(),
+  language: z.enum(["id", "en"]).default("id"),
+  timezone: z.string().default("Asia/Jakarta"),
+});
+
+// BAB 19.7 & 19.8 — Ganti Password (mengharuskan password lama demi keamanan)
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Password saat ini wajib diisi"),
+    newPassword: z.string().min(8, "Password baru minimal 8 karakter"),
+    confirmPassword: z.string().min(1, "Konfirmasi password wajib diisi"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Konfirmasi password baru tidak sama",
+    path: ["confirmPassword"],
+  });
+
+// BAB 19.7 — Ganti Email
+export const changeEmailSchema = z.object({
+  newEmail: z.string().email("Email tidak valid"),
+  currentPassword: z.string().min(1, "Password wajib diisi untuk konfirmasi"),
+});
+
+// BAB 19.5 — Lupa Password
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Email tidak valid"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, "Token tidak valid"),
+    newPassword: z.string().min(8, "Password baru minimal 8 karakter"),
+    confirmPassword: z.string().min(1, "Konfirmasi password wajib diisi"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Konfirmasi password tidak sama",
+    path: ["confirmPassword"],
+  });
+
+// BAB 19.13 — Penghapusan Akun: user harus mengetik ulang kata "HAPUS" demi
+// mencegah penghapusan tidak sengaja lewat 1 klik.
+export const deleteAccountSchema = z.object({
+  confirmation: z.literal("HAPUS", { errorMap: () => ({ message: "Ketik HAPUS untuk konfirmasi" }) }),
+});
+
 // BAB Template Management — Admin/Content Manager kelola katalog template
 export const templateSchema = z.object({
   name: z.string().min(3, "Nama template minimal 3 karakter"),
