@@ -18,7 +18,10 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
 `Blueprint_selalu_ajak.pdf` (30 BAB, v2.0). Repo ini sudah bisa dijalankan
 (`npm run dev`) dan mencakup:
 
-- ✅ Landing page (BAB 6)
+- ✅ Landing page (BAB 6) — Hero, section Fitur (`#fitur`), galeri Template
+  (`#template`, otomatis nampilin template `PUBLISHED` dari katalog admin —
+  section ini sembunyi sendiri kalau belum ada template yang dipublish), dan
+  perbandingan Harga (`#harga`, tabel fitur lengkap dari `PLAN_FEATURES`)
 - ✅ Authentication — Register, Login (email/password + Google) (BAB 7)
 - ✅ Dashboard Overview (BAB 8)
 - ✅ Event Builder — buat & publish acara (BAB 9)
@@ -44,17 +47,26 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
   `{{tanggal_acara}}`, `{{lokasi_acara}}`, `{{link_undangan}}`), status
   terkirim/gagal dilacak per-tamu di `WhatsappRecipient`, dan status
   delivered/read diperbarui real-time lewat webhook Fonnte
-  (`POST /api/whatsapp/webhook`). Dibatasi paket langganan (`PLANS.*.whatsappBlast`)
+  (`POST /api/whatsapp/webhook`). Dibatasi kuota per paket
+  (`PLANS.*.whatsappMessageLimit` — 100/500/2.000 penerima per kampanye,
+  dicek di server sebelum kirim). Selain jalur otomatis Fonnte, ada juga
+  **Kirim Manual via WA Pribadi** — tombol per-tamu yang membuka WhatsApp
+  pengguna sendiri dengan pesan sudah terisi (link `wa.me`), buat client yang
+  mau kirim dari nomor pribadinya sendiri, bukan dari device Fonnte
+  TheKurinji, dan tidak kena batas kuota kampanye
 - ✅ QR Check-in — manual check-in, scan kamera menyusul (BAB 14)
 - ✅ Analytics dasar (BAB 15)
 - ✅ Digital Gift (BAB 16) — pesan, rekening bank, e-wallet & QRIS tampil
   otomatis di section Digital Gift pada undangan
-- ✅ Subscription & Billing — alur Pilih Paket → Invoice → Metode Pembayaran
-  → Langganan Aktif (BAB 18.5), tersambung ke payment gateway Midtrans Snap
-  (VA, QRIS, Kartu Kredit/Debit, E-Wallet — BAB 18.6), **live di Production**
-  untuk `selaluajak.kurinji.asia`. Kalau `MIDTRANS_SERVER_KEY` belum diisi di
-  environment tertentu (mis. saat development lokal), otomatis jatuh ke
-  tombol simulasi supaya tetap bisa dites tanpa akun Midtrans
+- ✅ Subscription & Billing — 3 paket bertema Kurinji: **Kuncup** (gratis),
+  **Mekar** (Rp149.000), **Kurinji** (Rp299.000). Alur Pilih Paket → Invoice
+  → Metode Pembayaran → Langganan Aktif (BAB 18.5), tersambung ke payment
+  gateway Midtrans Snap (VA, QRIS, Kartu Kredit/Debit, E-Wallet — BAB 18.6),
+  **live di Production** untuk `selaluajak.kurinji.asia`. Kalau
+  `MIDTRANS_SERVER_KEY` belum diisi di environment tertentu (mis. saat
+  development lokal), otomatis jatuh ke tombol simulasi supaya tetap bisa
+  dites tanpa akun Midtrans. Detail lengkap tiap paket ada di section
+  "Paket Langganan" di bawah
 - ✅ **Admin Console** — dashboard ringkasan platform, kelola Users, Events,
   Template Undangan, Subscriptions, dan Audit Log, dilindungi `requireAdmin()`
   guard (BAB 21)
@@ -217,7 +229,37 @@ Belum tercakup dari BAB 10: Custom CSS, gating template Premium ke paket
 langganan tertentu, AI Copy/Theme Assistant, dan Version History (10.15,
 roadmap Future Development).
 
-## Payment Gateway (Midtrans Snap)
+## Paket Langganan
+
+Nama & harga paket didefinisikan di `PLANS` (`src/lib/plans.ts`), nama tema
+Kurinji: **Kuncup** (Gratis) → **Mekar** (Rp149.000) → **Kurinji**
+(Rp299.000). `key` internal-nya tetap pakai enum Prisma lama
+(`BASIC`/`PREMIUM`/`ULTIMATE`) supaya tidak perlu migration — yang berubah
+cuma `label` yang tampil ke user.
+
+Perbandingan fitur lengkap (20 baris) ada di `PLAN_FEATURES`, satu sumber
+data yang dipakai bareng oleh landing page (`/#harga`) dan halaman
+`/dashboard/billing`, supaya keduanya nggak pernah beda-beda kalau direvisi.
+
+**Yang beneran di-enforce oleh kode** (bukan cuma tampilan):
+- `maxEvents` — jumlah acara aktif, dicek di `getEventUsage()`
+  (`src/lib/subscription.ts`), dipakai saat `createEvent`.
+- `whatsappMessageLimit` — maks. penerima per kampanye WhatsApp Blast (100 /
+  500 / 2.000), dicek di `POST /api/whatsapp/campaigns/[id]/send` sebelum
+  kirim, dan ditampilkan di `/dashboard/whatsapp`.
+
+**Baru sebatas tampilan di tabel fitur**, belum ada logika pembatas di kode:
+Template (jumlah/kategori), Guest Management (limit tamu), QR Check-in
+(`qrCheckin` masih terbuka untuk semua paket), Digital Gift (jumlah rekening
+— skema `bankAccounts` di `DigitalGift` sudah berupa array/JSON dan bisa
+menampung banyak akun, tapi form `saveDigitalGift` di
+`/dashboard/gift/page.tsx` saat ini cuma menangani 1 rekening), Analytics,
+Integrasi Kenang Kurinji, Live Streaming, Galeri Foto, Video, Musik,
+Watermark, Subdomain Eksklusif, dan Prioritas Support. Kalau salah satu ini
+mau benar-benar dibatasi per paket, perlu ditambahkan pengecekannya di modul
+masing-masing (pola yang sama seperti `whatsappMessageLimit` di atas).
+
+
 
 Pembayaran sungguhan (VA, QRIS, Kartu Kredit/Debit, E-Wallet — BAB 18.6)
 **sudah aktif di Production** untuk `selaluajak.kurinji.asia`. Tombol "Bayar
@@ -267,8 +309,23 @@ popup Snap-nya yang berhasil.
    langganan (`PLANS.*`) yang memblokir user paket gratis memilih template
    Premium. Tambahkan pengecekan itu di `createEvent`
    (`src/app/dashboard/events/page.tsx`), mirip pola `getEventUsage`.
-2. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
-3. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
+2. Bangun enforcement untuk baris `PLAN_FEATURES` yang masih sebatas
+   tampilan (lihat daftarnya di section "Paket Langganan" di atas) — paling
+   mendesak: form Digital Gift (`/dashboard/gift/page.tsx`) baru menangani 1
+   rekening, padahal skema `bankAccounts` (JSON array) sudah siap menampung
+   banyak akun sesuai kuota tiap paket.
+3. **WhatsApp Blast dari nomor pribadi client, otomatis (bukan manual)**:
+   `Kirim Manual via WA Pribadi` (link `wa.me`) sudah tersedia sebagai jalan
+   cepat, tapi masih satu-satu per tamu. Kalau ke depan butuh yang otomatis
+   dari nomor pribadi tiap client, ada 2 opsi: (a) tiap client bikin device
+   Fonnte sendiri (scan QR dengan WA pribadi, simpan token device per-user)
+   — tetap gateway non-resmi, ada risiko nomor client kena ban WhatsApp kalau
+   volumenya besar; atau (b) integrasi resmi Meta WhatsApp Cloud API per
+   client (perlu verifikasi bisnis & approval template dari Meta, biaya per
+   pesan ditagih langsung ke client) — jauh lebih besar scope-nya, proyek
+   tersendiri.
+4. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
+5. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
    pindahkan proses kirim di `POST /api/whatsapp/campaigns/[id]/send` dari
    loop sinkron ke queue/background job — saat ini dibatasi durasi function
    Vercel (`maxDuration = 60`).
