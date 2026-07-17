@@ -1,6 +1,17 @@
 import Link from "next/link";
+import { AnnouncementBar } from "@/components/landing/AnnouncementBar";
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
+import { TrustedBy } from "@/components/landing/Trustedby";
+import { HowItWorks } from "@/components/landing/Howitworks";
+import { TemplateShowcase } from "@/components/landing/Templateshowcase";
+import { DashboardPreview } from "@/components/landing/Dashboardpreview";
+import { KenangKurinjiSection } from "@/components/landing/Kenangkurinjisection";
+import { Testimonials } from "@/components/landing/Testimonials";
+import { FaqAccordion } from "@/components/landing/Faqaccordion";
+import { BlogPreview } from "@/components/landing/BlogPreview";
+import { CtaSection } from "@/components/landing/CtaSection";
+import { Footer } from "@/components/landing/Footer";
 import { PLANS, PLAN_ORDER, PLAN_FEATURES } from "@/lib/plans";
 import { formatRupiah, cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
@@ -17,20 +28,97 @@ const features = [
   { title: "Integrasi Kenang Kurinji", desc: "Dokumentasi acara tetap hidup setelah hari-H berakhir." },
 ];
 
+// BAB 6.6 — SEO Strategy: Structured Data (schema.org Organization + FAQPage)
+function StructuredData() {
+  const orgJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Selalu Ajak",
+    url: process.env.NEXT_PUBLIC_APP_URL ?? "https://selaluajak.kurinji.asia",
+    description:
+      "Platform manajemen acara digital yang membantu Anda membuat undangan, mengelola tamu, menerima RSVP, hingga mengabadikan kenangan dalam satu pengalaman yang elegan.",
+    sameAs: [
+      "https://instagram.com/selaluajak",
+      "https://facebook.com/selaluajak",
+      "https://youtube.com/@selaluajak",
+    ],
+  };
+
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "Apakah bisa gratis?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Bisa. Paket Basic memungkinkan Anda membuat satu acara secara gratis dengan fitur inti seperti undangan, guest management, dan RSVP.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Bagaimana cara RSVP?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Tamu cukup membuka link undangan yang dikirim lewat WhatsApp, lalu mengisi form RSVP langsung dari halaman tersebut.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Apakah bisa custom domain?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Bisa, tersedia untuk paket Premium dan Ultimate.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Apakah bisa digunakan selain pernikahan?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Tentu. Selain pernikahan, Selalu Ajak mendukung ulang tahun, lamaran, wisuda, seminar, gathering, hingga acara korporat.",
+        },
+      },
+    ],
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+    </>
+  );
+}
+
 export default async function LandingPage() {
   // Section "Template" di bawah cuma tampil kalau ada template yang sudah
   // dipublish oleh Admin/Content Manager di /admin/templates — supaya
   // landing page tidak menampilkan kotak kosong sebelum ada template.
-  const templates = await prisma.invitationTemplate.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-    take: 6,
-  });
+  const [templates, eventCount, guestCount, rsvpCount] = await Promise.all([
+    prisma.invitationTemplate.findMany({
+      where: { status: "PUBLISHED" },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      take: 9,
+    }),
+    prisma.event.count(),
+    prisma.guest.count(),
+    prisma.rsvp.count({ where: { status: "AKAN_HADIR" } }),
+  ]);
 
   return (
     <main>
+      <StructuredData />
+      <AnnouncementBar />
       <Navbar />
       <Hero />
+      <TrustedBy eventCount={eventCount} guestCount={guestCount} rsvpCount={rsvpCount} />
 
       <section id="fitur" className="mx-auto max-w-6xl px-6 py-20">
         <h2 className="text-center font-heading text-3xl font-semibold text-forest-700">
@@ -49,52 +137,23 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      <HowItWorks />
+
       {templates.length > 0 && (
-        <section id="template" className="mx-auto max-w-6xl px-6 py-20">
-          <h2 className="text-center font-heading text-3xl font-semibold text-forest-700">
-            Template undangan siap pakai
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-center text-slate-600">
-            Pilih salah satu, atau jadikan titik awal lalu sesuaikan lewat
-            Invitation Builder — semua bisa diubah warna, font, dan isi
-            sectionnya.
-          </p>
-
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {templates.map((t) => (
-              <Link
-                key={t.id}
-                href="/register"
-                className="group overflow-hidden rounded-lg border border-champagne-100 bg-white shadow-soft transition hover:shadow-medium"
-              >
-                <div className="relative aspect-[3/4] overflow-hidden bg-champagne-50">
-                  <img
-                    src={t.thumbnailUrl}
-                    alt={t.name}
-                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                  />
-                  {t.isPremium && (
-                    <span className="absolute right-3 top-3 rounded-full bg-champagne-500 px-3 py-1 text-xs font-medium text-forest-900 shadow-soft">
-                      Premium
-                    </span>
-                  )}
-                </div>
-                <div className="p-4">
-                  <p className="font-heading text-base font-medium text-forest-700">{t.name}</p>
-                  {t.description && (
-                    <p className="mt-1 line-clamp-2 text-sm text-slate-500">{t.description}</p>
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          <p className="mt-8 text-center text-sm text-slate-500">
-            Lebih banyak template tersedia langsung di dalam Invitation
-            Builder setelah Anda mendaftar.
-          </p>
-        </section>
+        <TemplateShowcase
+          templates={templates.map((t) => ({
+            id: t.id,
+            name: t.name,
+            description: t.description,
+            thumbnailUrl: t.thumbnailUrl,
+            isPremium: t.isPremium,
+            eventType: t.eventType,
+          }))}
+        />
       )}
+
+      <DashboardPreview />
+      <KenangKurinjiSection />
 
       <section id="harga" className="bg-champagne-50/40 py-20">
         <div className="mx-auto max-w-6xl px-6">
@@ -199,25 +258,11 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section className="bg-forest-700 py-20 text-center text-ivory">
-        <h2 className="font-heading text-3xl font-semibold">Siap Memulai Cerita Anda?</h2>
-        <p className="mx-auto mt-4 max-w-xl text-champagne-100">
-          Buat acara pertama Anda hari ini dan rasakan pengalaman mengelola acara
-          dengan lebih sederhana.
-        </p>
-        <Link
-          href="/register"
-          className="mt-8 inline-block rounded-md bg-champagne-500 px-8 py-3 font-medium text-forest-900 shadow-medium transition hover:bg-champagne-400"
-        >
-          Buat Acara Gratis
-        </Link>
-      </section>
-
-      <footer className="border-t border-champagne-100 bg-ivory py-10 text-center text-sm text-slate-500">
-        <p className="font-heading text-forest-700">Selalu Ajak</p>
-        <p className="mt-2">Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.</p>
-        <p className="mt-4">&copy; {new Date().getFullYear()} The Kurinji. Semua hak dilindungi.</p>
-      </footer>
+      <Testimonials />
+      <FaqAccordion />
+      <BlogPreview />
+      <CtaSection />
+      <Footer />
     </main>
   );
 }
