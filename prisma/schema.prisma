@@ -116,6 +116,7 @@ model User {
   avatarUrl           String?              @map("avatar_url")
   image               String?
   whatsappNumber      String?              @map("whatsapp_number")
+  city                String?
   language            String               @default("id")
   timezone            String               @default("Asia/Jakarta")
   role                Role                 @default(USER)
