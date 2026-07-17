@@ -223,7 +223,9 @@ function TimelineSection({ section }: { section: SectionInstance }) {
   const items: any[] = section.data.items || [];
   return (
     <SectionShell className="mx-auto max-w-xl px-6 py-16">
-      <h2 className="text-center font-heading text-2xl font-semibold text-theme-primary">Rangkaian Acara</h2>
+      <h2 className="text-center font-heading text-2xl font-semibold text-theme-primary">
+        {section.data.title || "Rangkaian Acara"}
+      </h2>
       <div className="mt-8 space-y-6 border-l-2 border-theme-border pl-6">
         {items.map((it, i) => (
           <div key={i}>
@@ -444,4 +446,4 @@ function FooterSection({ section }: { section: SectionInstance }) {
       <p className="mt-1">Dipersembahkan melalui Selalu Ajak — Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.</p>
     </SectionShell>
   );
-                      }
+    }
