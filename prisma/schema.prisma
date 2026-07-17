@@ -249,6 +249,11 @@ model InvitationTemplate {
   previewImages   String[]       @default([]) @map("preview_images")
   defaultSections Json           @map("default_sections") // struktur section default (cover, story, gallery, dst)
   primaryColor    String?        @map("primary_color")
+  // Id preset dari THEME_PRESETS (src/lib/invitation-themes.ts). Dipilih admin
+  // saat bikin template supaya struktur + tema visual sudah "sepaket" dan
+  // otomatis diterapkan ke Event begitu user pilih template ini (BAB 10.6,
+  // penggabungan alur Template & Tema supaya user tidak perlu pilih dua kali).
+  defaultThemeId  String         @default("elegant") @map("default_theme_id")
   isPremium       Boolean        @default(false) @map("is_premium")
   status          TemplateStatus @default(DRAFT)
   sortOrder       Int            @default(0) @map("sort_order")
