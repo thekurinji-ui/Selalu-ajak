@@ -65,7 +65,11 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
   pengguna sendiri dengan pesan sudah terisi (link `wa.me`), buat client yang
   mau kirim dari nomor pribadinya sendiri, bukan dari device Fonnte
   TheKurinji, dan tidak kena batas kuota kampanye
-- ✅ QR Check-in — manual check-in, scan kamera menyusul (BAB 14)
+- ✅ QR Check-in — QR unik per tamu (`Guest.qrCode`, digenerate jadi gambar PNG
+  lewat `/api/guests/[id]/qrcode`), scan kamera langsung dari
+  `/dashboard/checkin` (`QrScanner`, pakai `html5-qrcode`, idempotent —
+  scan ulang tamu yang sudah check-in tidak dianggap error), plus manual
+  check-in dari daftar tamu sebagai fallback (BAB 14)
 - ✅ Analytics dasar (BAB 15)
 - ✅ Digital Gift (BAB 16) — pesan, rekening bank, e-wallet & QRIS tampil
   otomatis di section Digital Gift pada undangan
