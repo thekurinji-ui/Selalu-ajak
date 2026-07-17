@@ -117,6 +117,9 @@ export const templateSchema = z.object({
     ])
     .optional(),
   primaryColor: z.string().optional(),
+  // Id preset dari THEME_PRESETS (src/lib/invitation-themes.ts) — lihat
+  // schema.prisma InvitationTemplate.defaultThemeId untuk konteks.
+  defaultThemeId: z.string().min(1, "Tema wajib dipilih").default("elegant"),
   isPremium: z.coerce.boolean().default(false),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).default("DRAFT"),
   defaultSections: z.string().min(2, "Struktur section wajib diisi"), // JSON string, di-parse di route
