@@ -98,7 +98,14 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
 Belum termasuk (lihat roadmap BAB 29 di blueprint): integrasi sungguhan
 WhatsApp Business API (masih pakai Fonnte, gateway non-resmi), gating
 template Premium ke paket langganan tertentu, integrasi otomatis ke Kenang
-Kurinji, dan fitur AI.
+Kurinji, dan fitur AI. Selain itu, beberapa hal yang disebut di sitemap
+blueprint (BAB 5.3) tapi belum ada kodenya sama sekali: halaman publik
+`/about`, `/faq`, `/contact` sebagai halaman berdiri sendiri (FAQ saat ini
+baru section accordion di landing page, bukan halaman terpisah), CMS/artikel
+individual untuk Blog (baru ada listing statis di `/blog`), fitur Kupon &
+Promo (BAB 18.11), serta modul Admin Console untuk Support Center/tiket,
+System Monitoring, dan Reports (BAB 21.7, 21.9–21.10) — Admin Console saat
+ini baru mencakup Users, Events, Template, Subscriptions, dan Audit Log.
 
 ## Tech stack
 
@@ -319,19 +326,14 @@ popup Snap-nya yang berhasil.
 
 ## Langkah selanjutnya
 
-1. **Migration untuk field `city` di `User`** — schema.prisma sudah diupdate
-   (BAB 19.6, halaman Profil), tapi migration-nya perlu dibuat & di-apply.
-   Jalankan lokal (lihat alur di section "Deploy & migrasi database" di
-   atas): `npx prisma migrate dev --name add_user_city`, commit folder
-   migration-nya, baru push.
-2. **Setup Resend** untuk fitur Lupa Password beneran ngirim email: daftar
+1. **Setup Resend** untuk fitur Lupa Password beneran ngirim email: daftar
    di [resend.com](https://resend.com), verifikasi domain
    `selaluajak.kurinji.asia` (atau subdomain email khusus), lalu isi
    `RESEND_API_KEY` di Vercel. Tanpa ini, fitur lupa password tetap jalan
    tapi cuma dalam mode development (link reset tampil di halaman, bukan
    email sungguhan) — jangan sampai lupa isi sebelum ada user asli yang
    butuh reset password.
-3. Sisa BAB 19 yang belum dikerjakan: **manajemen sesi/perangkat** (19.9 —
+2. Sisa BAB 19 yang belum dikerjakan: **manajemen sesi/perangkat** (19.9 —
    daftar perangkat yang login + tombol akhiri sesi tertentu) belum ada,
    karena NextAuth di project ini pakai `strategy: "jwt"` (token stateless
    tanpa tabel Session di database), jadi butuh mekanisme tambahan (versi
@@ -339,17 +341,17 @@ popup Snap-nya yang berhasil.
    **Kolaborasi Tim** (multi-role per acara), dan **Login OTP WhatsApp**
    masih ditandai "pengembangan berikutnya" di blueprint sendiri (19.16),
    jadi belum jadi prioritas.
-4. Gating **template Premium**: saat ini badge "Premium" di pemilihan template
+3. Gating **template Premium**: saat ini badge "Premium" di pemilihan template
    (`/dashboard/events`) baru bersifat visual — belum ada pengecekan paket
    langganan (`PLANS.*`) yang memblokir user paket gratis memilih template
    Premium. Tambahkan pengecekan itu di `createEvent`
    (`src/app/dashboard/events/page.tsx`), mirip pola `getEventUsage`.
-5. Bangun enforcement untuk baris `PLAN_FEATURES` yang masih sebatas
+4. Bangun enforcement untuk baris `PLAN_FEATURES` yang masih sebatas
    tampilan (lihat daftarnya di section "Paket Langganan" di atas) — paling
    mendesak: form Digital Gift (`/dashboard/gift/page.tsx`) baru menangani 1
    rekening, padahal skema `bankAccounts` (JSON array) sudah siap menampung
    banyak akun sesuai kuota tiap paket.
-6. **WhatsApp Blast dari nomor pribadi client, otomatis (bukan manual)**:
+5. **WhatsApp Blast dari nomor pribadi client, otomatis (bukan manual)**:
    `Kirim Manual via WA Pribadi` (link `wa.me`) sudah tersedia sebagai jalan
    cepat, tapi masih satu-satu per tamu. Kalau ke depan butuh yang otomatis
    dari nomor pribadi tiap client, ada 2 opsi: (a) tiap client bikin device
@@ -359,11 +361,22 @@ popup Snap-nya yang berhasil.
    client (perlu verifikasi bisnis & approval template dari Meta, biaya per
    pesan ditagih langsung ke client) — jauh lebih besar scope-nya, proyek
    tersendiri.
-7. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
-8. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
+6. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
+7. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
    pindahkan proses kirim di `POST /api/whatsapp/campaigns/[id]/send` dari
    loop sinkron ke queue/background job — saat ini dibatasi durasi function
    Vercel (`maxDuration = 60`).
+8. **Bangun UI Notification Center (BAB 20)** — model `Notification` sudah
+   ada di schema dan dipakai untuk kirim notifikasi dari beberapa modul,
+   tapi belum ada inbox/ikon lonceng/badge di Dashboard untuk
+   menampilkannya ke user.
+9. **Halaman publik yang belum ada** (disebut di sitemap BAB 5.3 tapi belum
+   ada file-nya): `/about`, `/faq`, `/contact` sebagai halaman mandiri, dan
+   CMS/halaman artikel individual untuk Blog (`/blog/[slug]`) — saat ini
+   `/blog` baru listing statis tanpa admin content management.
+10. **Kupon & Promo (BAB 18.11)** dan modul Admin **Support Center, System
+    Monitoring, Reports** (BAB 21.7, 21.9–21.10) — belum ada implementasi
+    sama sekali, baik schema maupun UI.
 
 ---
 
