@@ -6,6 +6,8 @@ import { PLANS } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SendCampaignButton } from "@/components/dashboard/SendCampaignButton";
+import { normalizeWhatsappNumber, renderWhatsappTemplate } from "@/lib/whatsapp";
+import { formatDateID } from "@/lib/utils";
 
 // BAB 13 — WhatsApp Blast, terhubung ke Fonnte (lihat src/lib/whatsapp.ts).
 // Kampanye dibuat di sini berstatus MENUNGGU, lalu benar-benar dikirim lewat
@@ -48,7 +50,14 @@ export default async function WhatsappPage({ searchParams }: { searchParams: { e
     getOrCreateSubscription(session.user.id),
   ]);
   const activeEventId = searchParams.eventId ?? events[0]?.id;
+  const activeEvent = events.find((e) => e.id === activeEventId);
   const messageLimit = PLANS[subscription.plan].whatsappMessageLimit;
+
+  const guests = activeEventId
+    ? await prisma.guest.findMany({ where: { eventId: activeEventId }, orderBy: { name: "asc" } })
+    : [];
+
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://selaluajak.kurinji.asia").replace(/\/$/, "");
 
   const campaigns = activeEventId
     ? await prisma.whatsappCampaign.findMany({
@@ -67,8 +76,9 @@ export default async function WhatsappPage({ searchParams }: { searchParams: { e
     <div>
       <h1 className="font-heading text-2xl font-semibold text-forest-700">WhatsApp Blast</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Pengiriman terhubung ke <span className="font-medium">Fonnte</span> — pastikan device Fonnte Anda
-        dalam status &ldquo;Connected&rdquo; sebelum mengirim kampanye.
+        Ada 2 cara kirim: <span className="font-medium">Kirim Sekarang</span> (otomatis lewat Fonnte,
+        pastikan device Fonnte Anda &ldquo;Connected&rdquo;) atau <span className="font-medium">Kirim
+        Manual via WA Pribadi</span> (buka WhatsApp Anda sendiri per tamu, tanpa Fonnte).
       </p>
 
       <div className="mt-4 rounded-lg border border-champagne-200 bg-champagne-50 px-4 py-3 text-sm text-champagne-800">
@@ -136,7 +146,7 @@ export default async function WhatsappPage({ searchParams }: { searchParams: { e
             {c.recipients.length > 0 && (
               <details className="border-t border-champagne-50">
                 <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-slate-500 hover:text-forest-600">
-                  Lihat rincian per-tamu ({c.recipients.length})
+                  Lihat rincian pengiriman otomatis ({c.recipients.length})
                 </summary>
                 <table className="w-full text-left text-xs">
                   <thead className="bg-champagne-50 text-slate-500">
@@ -158,6 +168,75 @@ export default async function WhatsappPage({ searchParams }: { searchParams: { e
                     ))}
                   </tbody>
                 </table>
+              </details>
+            )}
+
+            {/* Kirim Manual via WA Pribadi — tiap tombol buka WhatsApp di HP
+                pengguna sendiri dengan pesan sudah terisi otomatis, jadi yang
+                terkirim itu WA pribadi client, bukan nomor Fonnte/TheKurinji.
+                Tidak ada batas kuota di sini karena bukan blast otomatis —
+                dikirim manual satu-satu oleh client. */}
+            {activeEvent && (
+              <details className="border-t border-champagne-50">
+                <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-slate-500 hover:text-forest-600">
+                  Kirim Manual via WA Pribadi ({guests.length} tamu)
+                </summary>
+                <div className="max-h-80 overflow-y-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-champagne-50 text-slate-500">
+                      <tr>
+                        <th className="px-4 py-2">Tamu</th>
+                        <th className="px-4 py-2">Nomor</th>
+                        <th className="px-4 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {guests.map((g) => {
+                        const phone = normalizeWhatsappNumber(g.whatsapp);
+                        const message = renderWhatsappTemplate(c.templateText, {
+                          namaTamu: g.name,
+                          namaAcara: activeEvent.name,
+                          tanggalAcara: activeEvent.date ? formatDateID(activeEvent.date) : undefined,
+                          lokasiAcara: activeEvent.location ?? undefined,
+                          linkUndangan: `${appUrl}/i/${activeEvent.slug}?to=${encodeURIComponent(g.name)}`,
+                        });
+                        const waLink = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : null;
+                        return (
+                          <tr key={g.id} className="border-t border-champagne-50">
+                            <td className="px-4 py-2">{g.name}</td>
+                            <td className="px-4 py-2 text-slate-500">{g.whatsapp}</td>
+                            <td className="px-4 py-2 text-right">
+                              {waLink ? (
+                                <a
+                                  href={waLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-block rounded-md bg-forest-600 px-3 py-1 font-medium text-white hover:bg-forest-700"
+                                >
+                                  Buka WA →
+                                </a>
+                              ) : (
+                                <span className="text-red-500">Nomor tidak valid</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {guests.length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="px-4 py-4 text-center text-slate-400">
+                            Belum ada tamu di acara ini.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="px-4 py-2 text-xs text-slate-400">
+                  Tiap tombol membuka WhatsApp Anda dengan pesan yang sudah terisi otomatis — tinggal tekan
+                  kirim. Nomor pengirimnya nomor WhatsApp pribadi Anda sendiri, bukan Fonnte, jadi tidak
+                  terpantau di rincian pengiriman otomatis di atas.
+                </p>
               </details>
             )}
           </div>
