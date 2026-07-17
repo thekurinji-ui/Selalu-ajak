@@ -23,6 +23,17 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
   section ini sembunyi sendiri kalau belum ada template yang dipublish), dan
   perbandingan Harga (`#harga`, tabel fitur lengkap dari `PLAN_FEATURES`)
 - ✅ Authentication — Register, Login (email/password + Google) (BAB 7)
+- ✅ **Account & User Management** (BAB 19) — halaman `/dashboard/settings`
+  sekarang beneran fungsional (sebelumnya stub baca-saja): edit profil
+  (nama, WhatsApp, kota, bahasa, zona waktu), ganti password, ganti email
+  (keduanya butuh konfirmasi password saat ini), **Lupa Password** (kirim
+  link reset lewat email, `PasswordResetToken` yang sebelumnya nganggur di
+  schema sekarang dipakai), dan Hapus Akun permanen (konfirmasi ketik
+  "HAPUS", data ikut terhapus lewat cascade). Aktivitas penting (ganti
+  password/email, hapus akun) tercatat di `AuditLog`. Kirim email pakai
+  Resend lewat `src/lib/email.ts` — kalau `RESEND_API_KEY` belum diisi,
+  fitur lupa password tetap bisa dites (link reset tampil langsung di
+  halaman, mode development, pola sama seperti `isMidtransConfigured()`)
 - ✅ Dashboard Overview (BAB 8)
 - ✅ Event Builder — buat & publish acara (BAB 9)
 - ✅ **Invitation Builder** — editor visual drag-and-drop penuh di atas kolom
@@ -304,17 +315,37 @@ popup Snap-nya yang berhasil.
 
 ## Langkah selanjutnya
 
-1. Gating **template Premium**: saat ini badge "Premium" di pemilihan template
+1. **Migration untuk field `city` di `User`** — schema.prisma sudah diupdate
+   (BAB 19.6, halaman Profil), tapi migration-nya perlu dibuat & di-apply.
+   Jalankan lokal (lihat alur di section "Deploy & migrasi database" di
+   atas): `npx prisma migrate dev --name add_user_city`, commit folder
+   migration-nya, baru push.
+2. **Setup Resend** untuk fitur Lupa Password beneran ngirim email: daftar
+   di [resend.com](https://resend.com), verifikasi domain
+   `selaluajak.kurinji.asia` (atau subdomain email khusus), lalu isi
+   `RESEND_API_KEY` di Vercel. Tanpa ini, fitur lupa password tetap jalan
+   tapi cuma dalam mode development (link reset tampil di halaman, bukan
+   email sungguhan) — jangan sampai lupa isi sebelum ada user asli yang
+   butuh reset password.
+3. Sisa BAB 19 yang belum dikerjakan: **manajemen sesi/perangkat** (19.9 —
+   daftar perangkat yang login + tombol akhiri sesi tertentu) belum ada,
+   karena NextAuth di project ini pakai `strategy: "jwt"` (token stateless
+   tanpa tabel Session di database), jadi butuh mekanisme tambahan (versi
+   token per-user, dicek ulang tiap request) kalau mau dibangun. **2FA**,
+   **Kolaborasi Tim** (multi-role per acara), dan **Login OTP WhatsApp**
+   masih ditandai "pengembangan berikutnya" di blueprint sendiri (19.16),
+   jadi belum jadi prioritas.
+4. Gating **template Premium**: saat ini badge "Premium" di pemilihan template
    (`/dashboard/events`) baru bersifat visual — belum ada pengecekan paket
    langganan (`PLANS.*`) yang memblokir user paket gratis memilih template
    Premium. Tambahkan pengecekan itu di `createEvent`
    (`src/app/dashboard/events/page.tsx`), mirip pola `getEventUsage`.
-2. Bangun enforcement untuk baris `PLAN_FEATURES` yang masih sebatas
+5. Bangun enforcement untuk baris `PLAN_FEATURES` yang masih sebatas
    tampilan (lihat daftarnya di section "Paket Langganan" di atas) — paling
    mendesak: form Digital Gift (`/dashboard/gift/page.tsx`) baru menangani 1
    rekening, padahal skema `bankAccounts` (JSON array) sudah siap menampung
    banyak akun sesuai kuota tiap paket.
-3. **WhatsApp Blast dari nomor pribadi client, otomatis (bukan manual)**:
+6. **WhatsApp Blast dari nomor pribadi client, otomatis (bukan manual)**:
    `Kirim Manual via WA Pribadi` (link `wa.me`) sudah tersedia sebagai jalan
    cepat, tapi masih satu-satu per tamu. Kalau ke depan butuh yang otomatis
    dari nomor pribadi tiap client, ada 2 opsi: (a) tiap client bikin device
@@ -324,8 +355,8 @@ popup Snap-nya yang berhasil.
    client (perlu verifikasi bisnis & approval template dari Meta, biaya per
    pesan ditagih langsung ke client) — jauh lebih besar scope-nya, proyek
    tersendiri.
-4. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
-5. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
+7. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
+8. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
    pindahkan proses kirim di `POST /api/whatsapp/campaigns/[id]/send` dari
    loop sinkron ke queue/background job — saat ini dibatasi durasi function
    Vercel (`maxDuration = 60`).
