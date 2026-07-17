@@ -5,6 +5,7 @@ import { formatDateID } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { SectionInstance } from "@/lib/invitation-sections";
+import { CinematicInviteSection } from "./CinematicInviteSection";
 
 export interface InvitationEventContext {
   name: string;
@@ -37,6 +38,8 @@ export function SectionRenderer({ section, event, guestName, mode = "live", onSu
   if (!section.visible) return null;
 
   switch (section.type) {
+    case "cinematic_intro":
+      return <CinematicInviteSection section={section} event={event} guestName={guestName} />;
     case "cover":
       return <CoverSection section={section} event={event} guestName={guestName} />;
     case "opening_message":
@@ -446,4 +449,4 @@ function FooterSection({ section }: { section: SectionInstance }) {
       <p className="mt-1">Dipersembahkan melalui Selalu Ajak — Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.</p>
     </SectionShell>
   );
-    }
+}
