@@ -94,7 +94,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       namaAcara: campaign.event.name,
       tanggalAcara: campaign.event.date ? formatDateID(campaign.event.date) : undefined,
       lokasiAcara: campaign.event.location ?? undefined,
-      linkUndangan: `${linkUndangan}?to=${encodeURIComponent(guest.name)}`,
+      linkUndangan: `${linkUndangan}?to=${encodeURIComponent(guest.name)}&g=${guest.qrCode}`,
     });
 
     if (!phone) {
