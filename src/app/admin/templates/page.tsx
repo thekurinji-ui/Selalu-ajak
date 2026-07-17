@@ -3,7 +3,7 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 import { cn } from "@/lib/utils";
-import { Plus } from "lucide-react";
+import { Plus, Eye } from "lucide-react";
 
 // BAB Template Management — Admin/Content Manager kelola katalog template
 // undangan yang bisa dipakai user di Invitation Builder.
@@ -47,12 +47,11 @@ export default async function AdminTemplatesPage() {
         )}
 
         {templates.map((t) => (
-          <Link
+          <div
             key={t.id}
-            href={`/admin/templates/${t.id}/edit`}
             className="group overflow-hidden rounded-lg border border-slate-800 bg-slate-950 transition hover:border-amber-400/50"
           >
-            <div className="relative aspect-[3/4] w-full bg-slate-900">
+            <Link href={`/admin/templates/${t.id}/preview`} className="relative block aspect-[3/4] w-full bg-slate-900">
               <Image
                 src={t.thumbnailUrl}
                 alt={t.name}
@@ -65,8 +64,13 @@ export default async function AdminTemplatesPage() {
                   PREMIUM
                 </span>
               )}
-            </div>
-            <div className="p-3">
+              <span className="absolute inset-0 flex items-center justify-center bg-slate-950/0 opacity-0 transition group-hover:bg-slate-950/40 group-hover:opacity-100">
+                <span className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-900">
+                  <Eye size={14} /> Lihat Preview
+                </span>
+              </span>
+            </Link>
+            <Link href={`/admin/templates/${t.id}/edit`} className="block p-3 hover:bg-slate-900/60">
               <p className="truncate font-medium text-white">{t.name}</p>
               <div className="mt-2 flex items-center justify-between">
                 <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", statusStyles[t.status])}>
@@ -74,8 +78,8 @@ export default async function AdminTemplatesPage() {
                 </span>
                 <span className="text-xs text-slate-500">{t._count.events} dipakai</span>
               </div>
-            </div>
-          </Link>
+            </Link>
+          </div>
         ))}
       </div>
     </div>
