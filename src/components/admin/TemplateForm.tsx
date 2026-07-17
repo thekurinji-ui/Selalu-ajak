@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { UploadCloud, Loader2 } from "lucide-react";
+import { THEME_PRESETS } from "@/lib/invitation-themes";
 
 // BAB Template Management — form ini dipakai untuk 2 mode:
 // - Create: /admin/templates/new            (initialData kosong)
@@ -15,6 +16,7 @@ type TemplateFormInitialData = {
   description: string | null;
   eventType: string | null;
   primaryColor: string | null;
+  defaultThemeId: string;
   isPremium: boolean;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   thumbnailUrl: string;
@@ -46,7 +48,8 @@ export function TemplateForm({ initialData }: { initialData?: TemplateFormInitia
   const [slug, setSlug] = useState(initialData?.slug ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [eventType, setEventType] = useState(initialData?.eventType ?? "");
-  const [primaryColor, setPrimaryColor] = useState(initialData?.primaryColor ?? "#1F3D2B");
+  const [defaultThemeId, setDefaultThemeId] = useState(initialData?.defaultThemeId ?? "elegant");
+  const selectedPreset = THEME_PRESETS.find((p) => p.id === defaultThemeId) ?? THEME_PRESETS[0];
   const [isPremium, setIsPremium] = useState(initialData?.isPremium ?? false);
   const [status, setStatus] = useState(initialData?.status ?? "DRAFT");
   const [defaultSections, setDefaultSections] = useState(
@@ -99,7 +102,8 @@ export function TemplateForm({ initialData }: { initialData?: TemplateFormInitia
     formData.set("slug", slug);
     formData.set("description", description);
     if (eventType) formData.set("eventType", eventType);
-    formData.set("primaryColor", primaryColor);
+    formData.set("primaryColor", selectedPreset.colors.primary);
+    formData.set("defaultThemeId", defaultThemeId);
     formData.set("isPremium", String(isPremium));
     formData.set("status", status);
     formData.set("defaultSections", defaultSections);
@@ -179,13 +183,27 @@ export function TemplateForm({ initialData }: { initialData?: TemplateFormInitia
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">Warna Utama</label>
-            <input
-              type="color"
-              value={primaryColor}
-              onChange={(e) => setPrimaryColor(e.target.value)}
-              className="h-[38px] w-full rounded-lg border border-slate-800 bg-slate-900 px-1"
-            />
+            <label className="mb-1.5 block text-sm font-medium text-slate-300">Tema Bawaan</label>
+            <div className="flex items-center gap-2">
+              <span
+                className="h-[38px] w-[38px] shrink-0 rounded-lg border border-slate-800"
+                style={{ backgroundColor: selectedPreset.colors.primary }}
+                aria-hidden
+              />
+              <select
+                value={defaultThemeId}
+                onChange={(e) => setDefaultThemeId(e.target.value)}
+                className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none"
+              >
+                {THEME_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>{preset.label}</option>
+                ))}
+              </select>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Tema ini otomatis diterapkan (warna, font) begitu user memilih template ini
+              saat bikin acara — dia nggak perlu pilih tema terpisah lagi.
+            </p>
           </div>
         </div>
 
@@ -268,4 +286,4 @@ export function TemplateForm({ initialData }: { initialData?: TemplateFormInitia
       </div>
     </form>
   );
-      }
+}
