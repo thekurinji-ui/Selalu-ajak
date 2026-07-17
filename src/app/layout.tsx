@@ -68,10 +68,46 @@ const bebasNeue = Bebas_Neue({
   display: "swap",
 });
 
+// BAB 6.6 — SEO Strategy: Meta Title/Description, Open Graph, Twitter Card,
+// dan robots dasar. Sitemap XML & robots.txt ada di src/app/sitemap.ts dan
+// src/app/robots.ts (route handler bawaan Next.js App Router).
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://selaluajak.kurinji.asia";
+const title = "Selalu Ajak — Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.";
+const description =
+  "Platform manajemen acara digital yang membantu Anda membuat undangan, mengelola tamu, menerima RSVP, hingga mengabadikan kenangan dalam satu pengalaman yang elegan.";
+
 export const metadata: Metadata = {
-  title: "Selalu Ajak — Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.",
-  description:
-    "Platform manajemen acara digital yang membantu Anda membuat undangan, mengelola tamu, menerima RSVP, hingga mengabadikan kenangan dalam satu pengalaman yang elegan.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: title,
+    template: "%s — Selalu Ajak",
+  },
+  description,
+  keywords: [
+    "undangan digital",
+    "undangan pernikahan online",
+    "manajemen acara",
+    "RSVP online",
+    "QR check-in acara",
+    "WhatsApp blast undangan",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "id_ID",
+    url: siteUrl,
+    siteName: "Selalu Ajak",
+    title,
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 const fontVariables = [
