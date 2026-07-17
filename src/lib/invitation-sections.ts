@@ -12,6 +12,7 @@ import { z } from "zod";
 // ---------------------------------------------------------------------------
 
 export const SECTION_TYPES = [
+  "cinematic_intro",
   "cover",
   "opening_message",
   "couple",
@@ -64,6 +65,20 @@ export interface SectionLibraryEntry {
 }
 
 export const SECTION_LIBRARY: Record<SectionType, SectionLibraryEntry> = {
+  cinematic_intro: {
+    type: "cinematic_intro",
+    label: "Cinematic Intro (Premium)",
+    description:
+      "Gerbang pembuka bergaya platform streaming: splash judul, pilih profil tamu, lalu tombol buka undangan. Ganti Opening Cover.",
+    category: "Pembuka",
+    singleton: true,
+    defaultData: {
+      posterUrl: "",
+      chimeUrl: "",
+      accentLabel: "SELALU AJAK",
+      openButtonLabel: "Mulai",
+    },
+  },
   cover: {
     type: "cover",
     label: "Opening Cover",
@@ -248,4 +263,4 @@ export function parseSections(raw: unknown): SectionInstance[] {
     return getDefaultSections();
   }
   return parsed.data as SectionInstance[];
-      }
+}
