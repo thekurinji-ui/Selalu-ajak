@@ -145,25 +145,34 @@ function Fields({
     case "timeline": {
       const items: any[] = d.items || [];
       return (
-        <ListEditor
-          items={items}
-          onChange={(next) => set({ items: next })}
-          addLabel="Tambah Kegiatan"
-          empty={{ time: "", title: "", description: "" }}
-          renderItem={(it, i, update) => (
-            <>
-              <Field label="Jam">
-                <Input value={it.time || ""} onChange={(e) => update({ time: e.target.value })} placeholder="10.00" />
-              </Field>
-              <Field label="Nama Kegiatan">
-                <Input value={it.title || ""} onChange={(e) => update({ title: e.target.value })} placeholder="Akad Nikah" />
+        <>
+          <Field label="Judul Section">
+            <Input
+              value={d.title || ""}
+              onChange={(e) => set({ title: e.target.value })}
+              placeholder="Rangkaian Acara"
+            />
+          </Field>
+          <ListEditor
+            items={items}
+            onChange={(next) => set({ items: next })}
+            addLabel="Tambah Kegiatan"
+            empty={{ time: "", title: "", description: "" }}
+            renderItem={(it, i, update) => (
+              <>
+                <Field label="Jam">
+                  <Input value={it.time || ""} onChange={(e) => update({ time: e.target.value })} placeholder="10.00" />
+                </Field>
+                <Field label="Nama Kegiatan">
+                  <Input value={it.title || ""} onChange={(e) => update({ title: e.target.value })} placeholder="Akad Nikah" />
               </Field>
               <Field label="Deskripsi">
                 <Input value={it.description || ""} onChange={(e) => update({ description: e.target.value })} />
               </Field>
             </>
           )}
-        />
+          />
+        </>
       );
     }
 
@@ -489,4 +498,4 @@ function ImageGalleryUploadField({
       {error && <p className="mt-1 text-[11px] text-danger">{error}</p>}
     </div>
   );
-}
+        }
