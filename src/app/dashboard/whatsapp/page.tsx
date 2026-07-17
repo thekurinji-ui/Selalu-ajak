@@ -198,7 +198,7 @@ export default async function WhatsappPage({ searchParams }: { searchParams: { e
                           namaAcara: activeEvent.name,
                           tanggalAcara: activeEvent.date ? formatDateID(activeEvent.date) : undefined,
                           lokasiAcara: activeEvent.location ?? undefined,
-                          linkUndangan: `${appUrl}/i/${activeEvent.slug}?to=${encodeURIComponent(g.name)}`,
+                          linkUndangan: `${appUrl}/i/${activeEvent.slug}?to=${encodeURIComponent(g.name)}&g=${g.qrCode}`,
                         });
                         const waLink = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : null;
                         return (
