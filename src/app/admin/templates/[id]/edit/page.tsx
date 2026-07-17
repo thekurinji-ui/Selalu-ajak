@@ -45,6 +45,7 @@ export default async function EditTemplatePage({ params }: { params: { id: strin
           description: template.description,
           eventType: template.eventType,
           primaryColor: template.primaryColor,
+          defaultThemeId: template.defaultThemeId,
           isPremium: template.isPremium,
           status: template.status,
           thumbnailUrl: template.thumbnailUrl,
