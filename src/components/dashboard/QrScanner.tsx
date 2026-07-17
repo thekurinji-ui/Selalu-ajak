@@ -27,6 +27,13 @@ export function QrScanner() {
 
   async function startScanning() {
     setLastResult(null);
+    // Penting: tampilkan kontainer video DULU (sebelum kamera di-start), biar
+    // ukurannya bukan 0x0 waktu html5-qrcode ngitung dimensi videonya. Kalau
+    // kontainernya masih `hidden` (display:none) pas start() dipanggil,
+    // kamera tetap nyala (izin browser sudah diberikan) tapi videonya nggak
+    // pernah muncul di layar karena dirender ke elemen berukuran nol.
+    setIsRunning(true);
+
     const { Html5Qrcode } = await import("html5-qrcode");
 
     const scanner = new Html5Qrcode(scannerElId);
@@ -48,8 +55,8 @@ export function QrScanner() {
           // Diabaikan — dipanggil terus tiap frame yang gagal terbaca, bukan error fatal.
         },
       );
-      setIsRunning(true);
     } catch (err) {
+      setIsRunning(false); // balikin kontainer ke hidden karena kamera gagal nyala
       setLastResult({
         status: "error",
         message: "Tidak bisa mengakses kamera. Pastikan izin kamera diaktifkan.",
