@@ -134,6 +134,24 @@ export const THEME_PRESETS: ThemePreset[] = [
     },
     fontId: "bebas-inter",
   },
+  {
+    id: "minang-maroon-gold",
+    label: "Luxury Maroon Minang",
+    description:
+      "Maroon pekat, emas songket, dan ivory hangat — nuansa mewah-sinematik terinspirasi rumah gadang & ukiran Minangkabau.",
+    colors: {
+      primary: "#6B0F1A",
+      primaryDark: "#480A12",
+      secondary: "#C9A227",
+      secondaryDark: "#A6820E",
+      background: "#FBF6EC",
+      surface: "#FFFFFF",
+      text: "#2B1210",
+      muted: "#7A6355",
+      border: "#E8D8AE",
+    },
+    fontId: "cinzel-work",
+  },
 ];
 
 export const DEFAULT_THEME_ID = "elegant";
