@@ -119,6 +119,10 @@ model User {
   city                String?
   language            String               @default("id")
   timezone            String               @default("Asia/Jakarta")
+  // BAB 20.7 — preferensi kategori notifikasi yang ingin diterima user.
+  // Contoh isi: {"rsvp": true, "whatsapp": true, "subscription": true,
+  // "account": true}. Key yang tidak ada dianggap true (default aktif).
+  notificationPreferences Json?           @default("{}") @map("notification_preferences")
   role                Role                 @default(USER)
   isActive            Boolean              @default(true) @map("is_active")
   events              Event[]
@@ -468,18 +472,20 @@ model Invoice {
 // ---------------------------------------------------------------------------
 
 model Notification {
-  id       String   @id @default(uuid())
-  userId   String   @map("user_id")
-  category String   // event | rsvp | whatsapp | checkin | subscription | account
-  title    String
-  body     String   @db.Text
-  readAt   DateTime? @map("read_at")
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  category   String    // event | rsvp | whatsapp | checkin | subscription | account
+  title      String
+  body       String    @db.Text
+  readAt     DateTime? @map("read_at")
+  archivedAt DateTime? @map("archived_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([userId, readAt])
+  @@index([userId, category])
   @@map("notifications")
 }
 
