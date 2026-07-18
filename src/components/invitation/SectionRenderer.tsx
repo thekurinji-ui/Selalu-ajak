@@ -11,6 +11,7 @@ import { resolveMotionConfig } from "@/lib/motion-config";
 import { Reveal } from "@/components/motion/Reveal";
 import { ScrollCamera } from "@/components/motion/ScrollCamera";
 import { KenBurnsImage } from "@/components/motion/KenBurnsImage";
+import { MultiLayerParallax, type ParallaxLayer } from "@/components/motion/MultiLayerParallax";
 
 export interface InvitationEventContext {
   name: string;
@@ -106,6 +107,7 @@ function CoverSection({
   guestName?: string;
 }) {
   const photo = section.data.photoUrl || event.coverImageUrl;
+  const layers: ParallaxLayer[] = section.data.layers || [];
   // Legacy: field `scrollEffect: "parallax"` dari revisi sebelum motion engine
   // ini ada → dipetakan otomatis ke config baru biar template lama tetap jalan.
   const motionConfig = resolveMotionConfig(section.data, { camera: "zoom-in", parallax: "vertical" });
@@ -113,14 +115,18 @@ function CoverSection({
 
   return (
     <SectionShell className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-theme-bg px-6 text-center">
-      {photo &&
+      {layers.length > 0 ? (
+        <MultiLayerParallax layers={layers} intensity={motionConfig?.intensity} className="absolute inset-0 -z-10" />
+      ) : (
+        photo &&
         (useKenBurns ? (
           <KenBurnsImage src={photo} config={motionConfig} className="absolute inset-0 -z-10" />
         ) : (
           <ScrollCamera config={motionConfig} className="absolute inset-0 -z-10">
             <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${photo})` }} />
           </ScrollCamera>
-        ))}
+        ))
+      )}
       <p className="font-heading text-sm uppercase tracking-widest text-theme-secondary">
         {guestName ? `Kepada Yth. ${guestName}` : "Undangan"}
       </p>
@@ -201,12 +207,20 @@ function EventInfoSection({ section, event }: { section: SectionInstance; event:
 function EventDetailSection({ section }: { section: SectionInstance }) {
   const d = section.data;
   const photo = d.photoUrl;
+  const layers: ParallaxLayer[] = d.layers || [];
+  const hasBackground = layers.length > 0 || !!photo;
   const motionConfig = resolveMotionConfig(d, { parallax: "vertical" });
   const useKenBurns = motionConfig?.imageEffect === "ken-burns";
 
   return (
     <SectionShell className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
-      {photo &&
+      {layers.length > 0 ? (
+        <>
+          <MultiLayerParallax layers={layers} intensity={motionConfig?.intensity} className="absolute inset-0 -z-20" />
+          <div className="absolute inset-0 -z-10 bg-black/45" />
+        </>
+      ) : (
+        photo &&
         (useKenBurns ? (
           <>
             <KenBurnsImage src={photo} config={motionConfig} className="absolute inset-0 -z-20" />
@@ -219,23 +233,24 @@ function EventDetailSection({ section }: { section: SectionInstance }) {
             </ScrollCamera>
             <div className="absolute inset-0 -z-10 bg-black/45" />
           </>
-        ))}
-      <Reveal config={{ reveal: "curtain", ...(!photo ? motionConfig : {}) }}>
-        <h2 className={`font-heading text-3xl font-semibold ${photo ? "text-white" : "text-theme-primary"}`}>
+        ))
+      )}
+      <Reveal config={{ reveal: "curtain", ...(!hasBackground ? motionConfig : {}) }}>
+        <h2 className={`font-heading text-3xl font-semibold ${hasBackground ? "text-white" : "text-theme-primary"}`}>
           {d.title || "Acara"}
         </h2>
-        <p className={`mt-4 text-lg ${photo ? "text-white/90" : "text-theme-muted"}`}>
+        <p className={`mt-4 text-lg ${hasBackground ? "text-white/90" : "text-theme-muted"}`}>
           {[d.day, d.date].filter(Boolean).join(", ")}
         </p>
         {(d.time || d.timeNote) && (
-          <p className={`mt-1 text-sm ${photo ? "text-white/80" : "text-theme-muted"}`}>
+          <p className={`mt-1 text-sm ${hasBackground ? "text-white/80" : "text-theme-muted"}`}>
             {[d.time, d.timeNote].filter(Boolean).join(" ")}
           </p>
         )}
         {d.locationName && (
-          <p className={`mt-6 font-heading text-lg ${photo ? "text-white" : "text-theme-primary"}`}>{d.locationName}</p>
+          <p className={`mt-6 font-heading text-lg ${hasBackground ? "text-white" : "text-theme-primary"}`}>{d.locationName}</p>
         )}
-        {d.address && <p className={`mt-1 text-sm ${photo ? "text-white/80" : "text-theme-muted"}`}>{d.address}</p>}
+        {d.address && <p className={`mt-1 text-sm ${hasBackground ? "text-white/80" : "text-theme-muted"}`}>{d.address}</p>}
         {d.mapsUrl && (
           <a
             href={d.mapsUrl}
@@ -576,4 +591,4 @@ function FooterSection({ section }: { section: SectionInstance }) {
       </Reveal>
     </SectionShell>
   );
-    }
+      }
