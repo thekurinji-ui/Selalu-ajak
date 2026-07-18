@@ -165,18 +165,31 @@ function OpeningMessageSection({ section }: { section: SectionInstance }) {
   );
 }
 
+// Gaya foto & layout couple section bisa beda per template lewat data.photoShape
+// & data.layout — kalau tidak diisi, fallback ke "circle" + "side-by-side" (klasik).
+const COUPLE_PHOTO_SHAPE_CLASS: Record<string, string> = {
+  circle: "aspect-square rounded-full",
+  rounded: "aspect-[3/4] rounded-2xl",
+  square: "aspect-square rounded-md",
+};
+
 function CoupleSection({ section }: { section: SectionInstance }) {
   const members: any[] = section.data.members || [];
+  const photoShape = COUPLE_PHOTO_SHAPE_CLASS[section.data.photoShape as string] ?? COUPLE_PHOTO_SHAPE_CLASS.circle;
+  const isStacked = section.data.layout === "stacked";
+  // Bulet klasik dibuat kecil (h-28 w-28); rounded/square dibuat besar & full width.
+  const sizeClass = section.data.photoShape && section.data.photoShape !== "circle" ? "w-full max-w-sm" : "h-28 w-28";
+
   return (
-    <SectionShell className="mx-auto max-w-3xl px-6 py-16 text-center">
+    <SectionShell className={`mx-auto px-6 py-16 text-center ${isStacked ? "max-w-xl" : "max-w-3xl"}`}>
       <h2 className="font-heading text-2xl font-semibold text-theme-primary">Mempelai</h2>
-      <div className="mt-8 grid gap-8 sm:grid-cols-2">
+      <div className={isStacked ? "mt-8 flex flex-col gap-14" : "mt-8 grid gap-8 sm:grid-cols-2"}>
         {members.map((m, i) => (
           <Reveal key={i} config={m.motion ?? { reveal: i % 2 === 0 ? "slide-left" : "slide-right" }}>
-            <div className="mx-auto h-28 w-28 overflow-hidden rounded-full bg-theme-bg">
+            <div className={`mx-auto overflow-hidden bg-theme-bg shadow-soft ${photoShape} ${sizeClass}`}>
               {m.photoUrl && <img src={m.photoUrl} alt={m.name} className="h-full w-full object-cover" />}
             </div>
-            <p className="mt-4 font-heading text-lg font-medium text-theme-primary">{m.name || "Nama"}</p>
+            <p className="mt-5 font-heading text-xl font-medium text-theme-primary">{m.name || "Nama"}</p>
             {m.parents && <p className="text-sm text-theme-muted">{m.parents}</p>}
             {m.description && <p className="mt-2 text-sm text-theme-muted">{m.description}</p>}
           </Reveal>
@@ -591,4 +604,4 @@ function FooterSection({ section }: { section: SectionInstance }) {
       </Reveal>
     </SectionShell>
   );
-      }
+}
