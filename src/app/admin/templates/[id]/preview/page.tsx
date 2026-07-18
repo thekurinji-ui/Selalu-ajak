@@ -34,7 +34,12 @@ export default async function TemplatePreviewPage({ params }: { params: { id: st
         </Link>
       </div>
 
-      <TemplatePreviewCanvas sections={sections} templateName={template.name} primaryColor={template.primaryColor} />
+      <TemplatePreviewCanvas
+        sections={sections}
+        templateName={template.name}
+        primaryColor={template.primaryColor}
+        themeId={template.defaultThemeId}
+      />
     </div>
   );
 }
