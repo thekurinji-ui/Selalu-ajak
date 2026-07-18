@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications";
 
 // BAB 14.5 — QR Check-in via pemindaian kamera.
 // Menerima `qrCode` (nilai unik dari Guest.qrCode) hasil scan, memvalidasi
@@ -46,6 +47,18 @@ export async function POST(req: Request) {
   const checkIn = await prisma.checkIn.create({
     data: { guestId: guest.id, method: "QR" },
   });
+
+  // BAB 20.3 — "Check-in pertama": kirim sekali saja per acara, dicek lewat
+  // jumlah CheckIn yang sudah ada untuk acara ini (1 = baru saja jadi yang pertama).
+  const checkInCount = await prisma.checkIn.count({ where: { guest: { eventId: guest.eventId } } });
+  if (checkInCount === 1) {
+    await createNotification({
+      userId: guest.event.userId,
+      category: "checkin",
+      title: "Check-in pertama",
+      body: `${guest.name} adalah tamu pertama yang check-in di acara "${guest.event.name}".`,
+    });
+  }
 
   return NextResponse.json({
     status: "success",
