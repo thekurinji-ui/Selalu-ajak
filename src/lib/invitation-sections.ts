@@ -118,6 +118,9 @@ export const SECTION_LIBRARY: Record<SectionType, SectionLibraryEntry> = {
     category: "Inti",
     singleton: true,
     defaultData: {
+      // Opsional, beda per template — kalau kosong: photoShape="circle", layout="side-by-side"
+      // photoShape: "circle" | "rounded" | "square"
+      // layout: "side-by-side" | "stacked"
       members: [
         { name: "", photoUrl: "", parents: "", description: "", motion: { reveal: "slide-left" } },
         { name: "", photoUrl: "", parents: "", description: "", motion: { reveal: "slide-right" } },
