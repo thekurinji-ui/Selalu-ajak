@@ -17,6 +17,7 @@ export const SECTION_TYPES = [
   "opening_message",
   "couple",
   "event_info",
+  "event_detail",
   "countdown",
   "story",
   "timeline",
@@ -99,7 +100,10 @@ export const SECTION_LIBRARY: Record<SectionType, SectionLibraryEntry> = {
     category: "Pembuka",
     defaultData: {
       quote: "",
+      source: "",
       message: "",
+      photoUrl: "",
+      motion: {},
     },
   },
   couple: {
@@ -110,8 +114,8 @@ export const SECTION_LIBRARY: Record<SectionType, SectionLibraryEntry> = {
     singleton: true,
     defaultData: {
       members: [
-        { name: "", photoUrl: "", parents: "", description: "" },
-        { name: "", photoUrl: "", parents: "", description: "" },
+        { name: "", photoUrl: "", parents: "", description: "", motion: { reveal: "slide-left" } },
+        { name: "", photoUrl: "", parents: "", description: "", motion: { reveal: "slide-right" } },
       ],
     },
   },
@@ -126,13 +130,37 @@ export const SECTION_LIBRARY: Record<SectionType, SectionLibraryEntry> = {
       showTime: true,
     },
   },
+  event_detail: {
+    type: "event_detail",
+    label: "Event Detail (Akad / Resepsi)",
+    description:
+      "Kartu detail untuk satu rangkaian acara (mis. Akad Nikah atau Resepsi) dengan background foto/parallax sendiri, jam, lokasi, dan tombol Lihat Lokasi. Bisa dipakai lebih dari satu kali kalau acara punya beberapa sesi.",
+    category: "Inti",
+    defaultData: {
+      title: "Akad Nikah",
+      day: "",
+      date: "",
+      time: "",
+      timeNote: "",
+      locationName: "",
+      address: "",
+      mapsUrl: "",
+      buttonLabel: "Lihat Lokasi",
+      photoUrl: "",
+      motion: {},
+    },
+  },
   countdown: {
     type: "countdown",
     label: "Countdown",
     description: "Menghitung mundur waktu menuju acara secara otomatis.",
     category: "Inti",
     singleton: true,
-    defaultData: {},
+    defaultData: {
+      title: "Menuju Hari Bahagia",
+      background: "",
+      motion: {},
+    },
   },
   story: {
     type: "story",
@@ -215,6 +243,8 @@ export const SECTION_LIBRARY: Record<SectionType, SectionLibraryEntry> = {
     singleton: true,
     defaultData: {
       closingMessage: "Terima kasih atas doa dan restu Anda.",
+      photoUrl: "",
+      motion: {},
     },
   },
 };
