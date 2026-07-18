@@ -2,13 +2,21 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { createNotification } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 
 // BAB 9.8 — Workspace Acara
 async function publishEvent(formData: FormData) {
   "use server";
   const eventId = formData.get("eventId") as string;
-  await prisma.event.update({ where: { id: eventId }, data: { status: "PUBLISHED" } });
+  const event = await prisma.event.update({ where: { id: eventId }, data: { status: "PUBLISHED" } });
+
+  await createNotification({
+    userId: event.userId,
+    category: "event",
+    title: "Acara dipublikasikan",
+    body: `Acara "${event.name}" sudah live dan bisa diakses tamu di halaman undangan.`,
+  });
 }
 
 export default async function EventWorkspacePage({ params }: { params: { id: string } }) {
