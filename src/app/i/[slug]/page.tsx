@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { rsvpSchema } from "@/lib/validation";
+import { createNotification } from "@/lib/notifications";
 import { parseSections } from "@/lib/invitation-sections";
 import { SectionRenderer } from "@/components/invitation/SectionRenderer";
 import { ThemeProvider } from "@/components/invitation/ThemeProvider";
@@ -59,6 +60,16 @@ export default async function InvitationPage({
         wishMessage: parsed.data.wishMessage,
         answeredAt: new Date(),
       },
+    });
+
+    await createNotification({
+      userId: event!.userId,
+      category: "rsvp",
+      title: "RSVP baru diterima",
+      body:
+        parsed.data.status === "AKAN_HADIR"
+          ? `${name} mengonfirmasi akan hadir di "${event!.name}"${parsed.data.companions ? ` (+${parsed.data.companions} pendamping)` : ""}.`
+          : `${name} mengabari tidak bisa hadir di "${event!.name}".`,
     });
 
     await prisma.analyticsEvent.create({
