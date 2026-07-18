@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyMidtransSignature, mapMidtransStatus } from "@/lib/midtrans";
+import { createNotification } from "@/lib/notifications";
+import { PLANS } from "@/lib/plans";
 
 // BAB 18.6 — Webhook notifikasi pembayaran dari Midtrans (Snap).
 // Daftarkan URL ini di Midtrans Dashboard -> Settings -> Configuration ->
@@ -80,12 +82,26 @@ export async function POST(req: Request) {
         },
       }),
     ]);
+
+    await createNotification({
+      userId: invoice.userId,
+      category: "subscription",
+      title: "Pembayaran berhasil",
+      body: `Pembayaran paket ${PLANS[invoice.plan].label} berhasil. Langganan Anda aktif hingga ${newEndDate.toLocaleDateString("id-ID")}.`,
+    });
   } else if (mapped === "PENDING") {
     // Tidak perlu update apa-apa, invoice memang sudah PENDING.
   } else {
     await prisma.invoice.update({
       where: { id: invoice.id },
       data: { status: mapped, paymentMethod: paymentType ?? invoice.paymentMethod },
+    });
+
+    await createNotification({
+      userId: invoice.userId,
+      category: "subscription",
+      title: "Pembayaran gagal",
+      body: `Pembayaran untuk paket ${PLANS[invoice.plan].label} tidak berhasil (${mapped}). Silakan coba lagi dari halaman Billing.`,
     });
   }
 
