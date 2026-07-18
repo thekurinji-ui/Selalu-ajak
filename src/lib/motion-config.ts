@@ -18,7 +18,7 @@
  *   }
  */
 
-export type RevealType = "none" | "fade" | "slide" | "scale" | "curtain";
+export type RevealType = "none" | "fade" | "slide" | "slide-left" | "slide-right" | "scale" | "curtain";
 export type CameraType = "none" | "zoom-in" | "zoom-out";
 export type ParallaxType = "none" | "vertical" | "multi-layer";
 export type ImageEffectType = "none" | "ken-burns";
