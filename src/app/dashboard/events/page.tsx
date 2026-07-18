@@ -3,7 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateUniqueEventSlug } from "@/lib/slug";
 import { eventSchema } from "@/lib/validation";
-import { getEventUsage } from "@/lib/subscription";
+import { getEventUsage, getOrCreateSubscription } from "@/lib/subscription";
+import { PLANS } from "@/lib/plans";
 import { THEME_PRESETS } from "@/lib/invitation-themes";
 import { createNotification } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,17 @@ async function createEvent(formData: FormData) {
         where: { id: parsed.data.templateId, status: "PUBLISHED" },
       })
     : null;
+
+  // BAB 18.4 — Gating template Premium: template dengan isPremium hanya
+  // boleh dipakai paket Mekar/Kurinji. Dicek ulang di server (bukan cuma
+  // menyembunyikan badge di client) supaya user Kuncup tidak bisa lewati
+  // pengecekan dengan mengirim templateId premium langsung lewat form.
+  if (template?.isPremium) {
+    const subscription = await getOrCreateSubscription(session.user.id);
+    if (!PLANS[subscription.plan].canUsePremiumTemplates) {
+      redirect("/dashboard/events?error=premium_template");
+    }
+  }
 
   // Template sekarang membawa tema lengkap (bukan cuma primaryColor) — begitu
   // user pilih template, warna + font ikut ke-set otomatis dari
@@ -98,7 +110,7 @@ export default async function EventsPage({
   searchParams: { error?: string };
 }) {
   const session = await auth();
-  const [events, templates] = session?.user?.id
+  const [events, templates, subscription] = session?.user?.id
     ? await Promise.all([
         prisma.event.findMany({
           where: { userId: session.user.id },
@@ -108,8 +120,11 @@ export default async function EventsPage({
           where: { status: "PUBLISHED" },
           orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
         }),
+        getOrCreateSubscription(session.user.id),
       ])
-    : [[], []];
+    : [[], [], null];
+
+  const canUsePremiumTemplates = subscription ? PLANS[subscription.plan].canUsePremiumTemplates : false;
 
   return (
     <div>
@@ -122,6 +137,16 @@ export default async function EventsPage({
             Upgrade paket
           </Link>{" "}
           untuk membuat acara lebih banyak.
+        </div>
+      )}
+
+      {searchParams.error === "premium_template" && (
+        <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Template itu khusus paket Mekar & Kurinji.{" "}
+          <Link href="/dashboard/billing" className="font-medium underline">
+            Upgrade paket
+          </Link>{" "}
+          untuk memakainya, atau pilih template lain / mulai dari kanvas kosong.
         </div>
       )}
 
@@ -177,17 +202,27 @@ export default async function EventsPage({
               </label>
               {templates.map((t) => {
                 const preset = THEME_PRESETS.find((p) => p.id === t.defaultThemeId) ?? THEME_PRESETS[0];
+                const locked = t.isPremium && !canUsePremiumTemplates;
                 return (
                   <label
                     key={t.id}
-                    className="flex cursor-pointer flex-col overflow-hidden rounded-md border border-champagne-200 has-[:checked]:border-forest-600 has-[:checked]:ring-2 has-[:checked]:ring-forest-600"
+                    className={`flex flex-col overflow-hidden rounded-md border border-champagne-200 has-[:checked]:border-forest-600 has-[:checked]:ring-2 has-[:checked]:ring-forest-600 ${
+                      locked ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                    }`}
                   >
-                    <input type="radio" name="templateId" value={t.id} className="sr-only" />
-                    <img
-                      src={t.thumbnailUrl}
-                      alt={t.name}
-                      className="aspect-[3/4] w-full object-cover"
-                    />
+                    <input type="radio" name="templateId" value={t.id} disabled={locked} className="sr-only" />
+                    <div className="relative">
+                      <img
+                        src={t.thumbnailUrl}
+                        alt={t.name}
+                        className="aspect-[3/4] w-full object-cover"
+                      />
+                      {locked && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-xs font-medium text-white">
+                          🔒 Perlu upgrade
+                        </div>
+                      )}
+                    </div>
                     <span className="flex items-center justify-between gap-1 px-2 py-2 text-xs font-medium text-slate-600">
                       <span className="flex items-center gap-1.5">
                         <span
@@ -230,4 +265,4 @@ export default async function EventsPage({
       </div>
     </div>
   );
-            }
+}
