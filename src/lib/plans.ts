@@ -13,6 +13,7 @@ export type PlanConfig = {
   maxGuestsPerEvent: number; // tampil di tabel fitur; belum ada enforcement teknis
   whatsappMessageLimit: number; // maks. penerima per kampanye — DIENFORCE di /api/whatsapp/campaigns/[id]/send
   qrCheckin: boolean; // tampil di tabel fitur; belum ada enforcement teknis (QR Check-in masih terbuka untuk semua paket)
+  canUsePremiumTemplates: boolean; // DIENFORCE di createEvent (src/app/dashboard/events/page.tsx)
 };
 
 // Catatan: `key` tetap memakai nilai enum Prisma (BASIC/PREMIUM/ULTIMATE) —
@@ -29,6 +30,7 @@ export const PLANS: Record<Plan, PlanConfig> = {
     maxGuestsPerEvent: 300,
     whatsappMessageLimit: 100,
     qrCheckin: false,
+    canUsePremiumTemplates: false,
   },
   PREMIUM: {
     key: "PREMIUM",
@@ -39,6 +41,7 @@ export const PLANS: Record<Plan, PlanConfig> = {
     maxGuestsPerEvent: 1000,
     whatsappMessageLimit: 500,
     qrCheckin: true,
+    canUsePremiumTemplates: true,
   },
   ULTIMATE: {
     key: "ULTIMATE",
@@ -49,6 +52,7 @@ export const PLANS: Record<Plan, PlanConfig> = {
     maxGuestsPerEvent: 3000,
     whatsappMessageLimit: 2000,
     qrCheckin: true,
+    canUsePremiumTemplates: true,
   },
 };
 
