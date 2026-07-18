@@ -1,21 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useRef, useState } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useEffect, useState } from "react";
 import { formatDateID } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { SectionInstance } from "@/lib/invitation-sections";
 import { CinematicInviteSection } from "./CinematicInviteSection";
-
-/**
- * BAB 10.5.x — Efek scroll opsional.
- * Diaktifkan lewat `section.data.scrollEffect === "parallax"` pada
- * section `cover` dan `gallery`. Section tanpa field ini render seperti biasa
- * (tanpa dependency animasi tambahan saat runtime).
- */
-type ScrollEffect = "parallax" | undefined;
+import { resolveMotionConfig } from "@/lib/motion-config";
+import { Reveal } from "@/components/motion/Reveal";
+import { ScrollCamera } from "@/components/motion/ScrollCamera";
+import { KenBurnsImage } from "@/components/motion/KenBurnsImage";
 
 export interface InvitationEventContext {
   name: string;
@@ -83,20 +78,21 @@ export function SectionRenderer({ section, event, guestName, mode = "live", onSu
   }
 }
 
-const SectionShell = React.forwardRef<
-  HTMLElement,
-  {
-    className?: string;
-    style?: React.CSSProperties;
-    children: React.ReactNode;
-  }
->(function SectionShell({ className, style, children }, ref) {
+function SectionShell({
+  className,
+  style,
+  children,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}) {
   return (
-    <section ref={ref} className={className} style={style}>
+    <section className={className} style={style}>
       {children}
     </section>
   );
-});
+}
 
 function CoverSection({
   section,
@@ -108,30 +104,20 @@ function CoverSection({
   guestName?: string;
 }) {
   const photo = section.data.photoUrl || event.coverImageUrl;
-  const scrollEffect: ScrollEffect = section.data.scrollEffect;
-  const isParallax = scrollEffect === "parallax";
-
-  const ref = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const parallaxY = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
-  const parallaxScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
+  // Legacy: field `scrollEffect: "parallax"` dari revisi sebelum motion engine
+  // ini ada → dipetakan otomatis ke config baru biar template lama tetap jalan.
+  const motionConfig = resolveMotionConfig(section.data, { camera: "zoom-in", parallax: "vertical" });
+  const useKenBurns = motionConfig?.imageEffect === "ken-burns";
 
   return (
-    <SectionShell
-      ref={ref}
-      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-theme-bg px-6 text-center"
-    >
+    <SectionShell className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-theme-bg px-6 text-center">
       {photo &&
-        (isParallax ? (
-          <motion.div
-            className="absolute inset-0 -z-10 bg-cover bg-center"
-            style={{ backgroundImage: `url(${photo})`, y: parallaxY, scale: parallaxScale }}
-          />
+        (useKenBurns ? (
+          <KenBurnsImage src={photo} config={motionConfig} className="absolute inset-0 -z-10" />
         ) : (
-          <div
-            className="absolute inset-0 -z-10 bg-cover bg-center"
-            style={{ backgroundImage: `url(${photo})` }}
-          />
+          <ScrollCamera config={motionConfig} className="absolute inset-0 -z-10">
+            <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${photo})` }} />
+          </ScrollCamera>
         ))}
       <p className="font-heading text-sm uppercase tracking-widest text-theme-secondary">
         {guestName ? `Kepada Yth. ${guestName}` : "Undangan"}
@@ -274,7 +260,9 @@ function TimelineSection({ section }: { section: SectionInstance }) {
 function GallerySection({ section }: { section: SectionInstance }) {
   const images: string[] = section.data.images || [];
   const layout = section.data.layout || "grid";
-  const isParallax: boolean = section.data.scrollEffect === "parallax";
+  // Legacy: efek gallery lama ("scrollEffect: parallax") sebenarnya reveal
+  // zoom-in per foto, bukan continuous scroll — dipetakan ke reveal:"scale".
+  const motionConfig = resolveMotionConfig(section.data, { reveal: "scale" });
 
   const imgClassName =
     layout === "carousel"
@@ -296,22 +284,11 @@ function GallerySection({ section }: { section: SectionInstance }) {
               : "mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3"
           }
         >
-          {images.map((src, i) =>
-            isParallax ? (
-              <motion.img
-                key={i}
-                src={src}
-                alt=""
-                className={imgClassName}
-                initial={{ opacity: 0, scale: 1.15, y: 40 }}
-                whileInView={{ opacity: 1, scale: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.7, ease: "easeOut", delay: (i % 6) * 0.05 }}
-              />
-            ) : (
-              <img key={i} src={src} alt="" className={imgClassName} />
-            ),
-          )}
+          {images.map((src, i) => (
+            <Reveal key={i} config={motionConfig ? { ...motionConfig, delay: (i % 6) * 0.05 } : undefined}>
+              <img src={src} alt="" className={imgClassName} />
+            </Reveal>
+          ))}
         </div>
       )}
     </SectionShell>
@@ -491,4 +468,4 @@ function FooterSection({ section }: { section: SectionInstance }) {
       <p className="mt-1">Dipersembahkan melalui Selalu Ajak — Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.</p>
     </SectionShell>
   );
-                }
+                       }
