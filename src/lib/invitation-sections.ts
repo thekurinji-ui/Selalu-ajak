@@ -91,6 +91,11 @@ export const SECTION_LIBRARY: Record<SectionType, SectionLibraryEntry> = {
       eventTitle: "",
       hostName: "",
       openButtonLabel: "Buka Undangan",
+      // Opsional: isi ini (array ParallaxLayer, lihat MultiLayerParallax.tsx)
+      // untuk background berlapis (langit, gunung, rumah gadang, dst — tiap
+      // layer gerak beda kecepatan pas discroll). Kalau kosong, fallback ke
+      // `photoUrl` tunggal seperti biasa.
+      layers: [],
     },
   },
   opening_message: {
@@ -147,6 +152,9 @@ export const SECTION_LIBRARY: Record<SectionType, SectionLibraryEntry> = {
       mapsUrl: "",
       buttonLabel: "Lihat Lokasi",
       photoUrl: "",
+      // Sama seperti cover — opsional, array ParallaxLayer untuk background
+      // berlapis. Kosongkan untuk fallback ke `photoUrl` tunggal.
+      layers: [],
       motion: {},
     },
   },
