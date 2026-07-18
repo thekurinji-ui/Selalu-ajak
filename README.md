@@ -352,14 +352,23 @@ popup Snap-nya yang berhasil.
 
 ## Langkah selanjutnya
 
-1. **Migration untuk BAB 20** — schema.prisma nambah 2 kolom baru:
-   `Notification.archivedAt` dan `User.notificationPreferences`. Jalankan
-   `npx prisma migrate dev --name add_notification_center` lokal (atau bikin
-   file migration manual kalau lewat GitHub tanpa terminal — lihat contoh di
-   migration `add_user_city` sebelumnya), commit, push.
-2. **Migration untuk field `city`** — kalau migration
-   `add_user_city` di poin sebelumnya belum sempat dijalankan, lakukan itu
-   dulu (lihat alur di section "Deploy & migrasi database" di atas).
+1. **Migration Theme System yang baru dibuat** — kolom `secondaryColor`,
+   `backgroundColor`, `fontId` di `Event` (BAB 10.6–10.7) ternyata belum
+   pernah punya file migration sejak awal dibuat. Migration
+   `20260721000000_add_invitation_theme_fields` baru ditambahkan di sesi ini
+   — **commit & push** supaya Vercel menjalankannya lewat
+   `prisma migrate deploy`, kalau tidak fitur ganti tema akan error di
+   Production (kolomnya belum ada di database walau kodenya sudah menulis
+   ke situ). Migration `add_user_city` dan `add_notification_center` sendiri
+   sudah tercommit sebelumnya — cek tabel `events`/`users`/`notifications`
+   di database Production (psql atau Neon dashboard) kalau mau memastikan
+   ketiganya benar sudah diterapkan.
+2. **Verifikasi rename env var storage di Vercel** — kalau sempat rename
+   `S3_BUCKET`/`S3_ACCESS_KEY_ID`/dst. jadi `R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/
+   `R2_BUCKET_NAME`/`R2_PUBLIC_URL`, dan `MIDTRANS_CLIENT_KEY` jadi
+   `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`, coba tes sekali di Production: upload
+   foto lewat Invitation Builder, dan alur bayar Midtrans — supaya yakin
+   nggak ada nama variabel lama yang ke-skip pas rename manual.
 3. **Setup Resend** untuk fitur Lupa Password beneran ngirim email: daftar
    di [resend.com](https://resend.com), verifikasi domain
    `selaluajak.kurinji.asia` (atau subdomain email khusus), lalu isi
