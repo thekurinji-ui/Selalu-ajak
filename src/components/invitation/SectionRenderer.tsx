@@ -53,8 +53,10 @@ export function SectionRenderer({ section, event, guestName, mode = "live", onSu
       return <CoupleSection section={section} />;
     case "event_info":
       return <EventInfoSection section={section} event={event} />;
+    case "event_detail":
+      return <EventDetailSection section={section} />;
     case "countdown":
-      return <CountdownSection event={event} />;
+      return <CountdownSection section={section} event={event} />;
     case "story":
       return <StorySection section={section} />;
     case "timeline":
@@ -136,12 +138,23 @@ function CoverSection({
 
 function OpeningMessageSection({ section }: { section: SectionInstance }) {
   if (!section.data.message && !section.data.quote) return null;
+  const motionConfig = resolveMotionConfig(section.data);
+  const photo = section.data.photoUrl;
+
   return (
-    <SectionShell className="mx-auto max-w-xl px-6 py-16 text-center">
-      {section.data.quote && (
-        <p className="font-heading text-xl italic text-theme-primary">&ldquo;{section.data.quote}&rdquo;</p>
+    <SectionShell className="relative mx-auto max-w-xl overflow-hidden px-6 py-24 text-center">
+      {photo && (
+        <ScrollCamera config={{ camera: "zoom-in", intensity: "subtle", ...motionConfig }} className="absolute inset-0 -z-10 opacity-20">
+          <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${photo})` }} />
+        </ScrollCamera>
       )}
-      {section.data.message && <p className="mt-6 whitespace-pre-line text-theme-muted">{section.data.message}</p>}
+      <Reveal config={motionConfig ?? { reveal: "fade" }}>
+        {section.data.quote && (
+          <p className="font-heading text-xl italic text-theme-primary">&ldquo;{section.data.quote}&rdquo;</p>
+        )}
+        {section.data.source && <p className="mt-3 text-sm uppercase tracking-widest text-theme-secondary">{section.data.source}</p>}
+        {section.data.message && <p className="mt-6 whitespace-pre-line text-theme-muted">{section.data.message}</p>}
+      </Reveal>
     </SectionShell>
   );
 }
@@ -153,14 +166,14 @@ function CoupleSection({ section }: { section: SectionInstance }) {
       <h2 className="font-heading text-2xl font-semibold text-theme-primary">Mempelai</h2>
       <div className="mt-8 grid gap-8 sm:grid-cols-2">
         {members.map((m, i) => (
-          <div key={i}>
+          <Reveal key={i} config={m.motion ?? { reveal: i % 2 === 0 ? "slide-left" : "slide-right" }}>
             <div className="mx-auto h-28 w-28 overflow-hidden rounded-full bg-theme-bg">
               {m.photoUrl && <img src={m.photoUrl} alt={m.name} className="h-full w-full object-cover" />}
             </div>
             <p className="mt-4 font-heading text-lg font-medium text-theme-primary">{m.name || "Nama"}</p>
             {m.parents && <p className="text-sm text-theme-muted">{m.parents}</p>}
             {m.description && <p className="mt-2 text-sm text-theme-muted">{m.description}</p>}
-          </div>
+          </Reveal>
         ))}
       </div>
     </SectionShell>
@@ -182,7 +195,63 @@ function EventInfoSection({ section, event }: { section: SectionInstance; event:
   );
 }
 
-function CountdownSection({ event }: { event: InvitationEventContext }) {
+// Kartu detail satu sesi acara (mis. Akad Nikah / Resepsi) dengan background
+// foto sendiri + parallax/curtain — dipakai berkali-kali kalau acara punya
+// lebih dari satu rangkaian, beda dari `event_info` yang singleton & generik.
+function EventDetailSection({ section }: { section: SectionInstance }) {
+  const d = section.data;
+  const photo = d.photoUrl;
+  const motionConfig = resolveMotionConfig(d, { parallax: "vertical" });
+  const useKenBurns = motionConfig?.imageEffect === "ken-burns";
+
+  return (
+    <SectionShell className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
+      {photo &&
+        (useKenBurns ? (
+          <>
+            <KenBurnsImage src={photo} config={motionConfig} className="absolute inset-0 -z-20" />
+            <div className="absolute inset-0 -z-10 bg-black/45" />
+          </>
+        ) : (
+          <>
+            <ScrollCamera config={motionConfig} className="absolute inset-0 -z-20">
+              <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${photo})` }} />
+            </ScrollCamera>
+            <div className="absolute inset-0 -z-10 bg-black/45" />
+          </>
+        ))}
+      <Reveal config={{ reveal: "curtain", ...(!photo ? motionConfig : {}) }}>
+        <h2 className={`font-heading text-3xl font-semibold ${photo ? "text-white" : "text-theme-primary"}`}>
+          {d.title || "Acara"}
+        </h2>
+        <p className={`mt-4 text-lg ${photo ? "text-white/90" : "text-theme-muted"}`}>
+          {[d.day, d.date].filter(Boolean).join(", ")}
+        </p>
+        {(d.time || d.timeNote) && (
+          <p className={`mt-1 text-sm ${photo ? "text-white/80" : "text-theme-muted"}`}>
+            {[d.time, d.timeNote].filter(Boolean).join(" ")}
+          </p>
+        )}
+        {d.locationName && (
+          <p className={`mt-6 font-heading text-lg ${photo ? "text-white" : "text-theme-primary"}`}>{d.locationName}</p>
+        )}
+        {d.address && <p className={`mt-1 text-sm ${photo ? "text-white/80" : "text-theme-muted"}`}>{d.address}</p>}
+        {d.mapsUrl && (
+          <a
+            href={d.mapsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-8 inline-block rounded-md bg-theme-primary px-6 py-2 text-sm font-medium text-white shadow-soft"
+          >
+            {d.buttonLabel || "Lihat Lokasi"}
+          </a>
+        )}
+      </Reveal>
+    </SectionShell>
+  );
+}
+
+function CountdownSection({ section, event }: { section: SectionInstance; event: InvitationEventContext }) {
   const [remaining, setRemaining] = useState<null | { d: number; h: number; m: number; s: number }>(null);
 
   useEffect(() => {
@@ -204,22 +273,40 @@ function CountdownSection({ event }: { event: InvitationEventContext }) {
 
   if (!event.date) return null;
 
+  const motionConfig = resolveMotionConfig(section.data);
+  const background = section.data.background;
+  const onDark = !!background;
+
   return (
-    <SectionShell className="mx-auto max-w-md px-6 py-16 text-center">
-      <h2 className="font-heading text-2xl font-semibold text-theme-primary">Menuju Hari Bahagia</h2>
-      <div className="mt-6 grid grid-cols-4 gap-3">
-        {[
-          { label: "Hari", value: remaining?.d ?? 0 },
-          { label: "Jam", value: remaining?.h ?? 0 },
-          { label: "Menit", value: remaining?.m ?? 0 },
-          { label: "Detik", value: remaining?.s ?? 0 },
-        ].map((u) => (
-          <div key={u.label} className="rounded-md border border-theme-border bg-theme-surface py-3 shadow-soft">
-            <p className="font-heading text-xl font-semibold text-theme-primary">{u.value}</p>
-            <p className="text-xs text-theme-muted">{u.label}</p>
-          </div>
-        ))}
-      </div>
+    <SectionShell
+      className="mx-auto max-w-md px-6 py-16 text-center"
+      style={background ? { background } : undefined}
+    >
+      <Reveal config={motionConfig ?? { reveal: "fade" }}>
+        <h2 className={`font-heading text-2xl font-semibold ${onDark ? "text-white" : "text-theme-primary"}`}>
+          {section.data.title || "Menuju Hari Bahagia"}
+        </h2>
+        <div className="mt-6 grid grid-cols-4 gap-3">
+          {[
+            { label: "Hari", value: remaining?.d ?? 0 },
+            { label: "Jam", value: remaining?.h ?? 0 },
+            { label: "Menit", value: remaining?.m ?? 0 },
+            { label: "Detik", value: remaining?.s ?? 0 },
+          ].map((u) => (
+            <div
+              key={u.label}
+              className={
+                onDark
+                  ? "rounded-md border border-white/25 bg-white/10 py-3"
+                  : "rounded-md border border-theme-border bg-theme-surface py-3 shadow-soft"
+              }
+            >
+              <p className={`font-heading text-xl font-semibold ${onDark ? "text-white" : "text-theme-primary"}`}>{u.value}</p>
+              <p className={`text-xs ${onDark ? "text-white/75" : "text-theme-muted"}`}>{u.label}</p>
+            </div>
+          ))}
+        </div>
+      </Reveal>
     </SectionShell>
   );
 }
@@ -462,10 +549,31 @@ function WishesSection() {
 }
 
 function FooterSection({ section }: { section: SectionInstance }) {
+  const photo = section.data.photoUrl;
+  const motionConfig = resolveMotionConfig(section.data);
+  const useKenBurns = motionConfig?.imageEffect === "ken-burns";
+
+  if (!photo) {
+    return (
+      <SectionShell className="border-t border-theme-border py-10 text-center text-sm text-theme-muted">
+        <p>{section.data.closingMessage || "Terima kasih atas doa dan restu Anda."}</p>
+        <p className="mt-1">Dipersembahkan melalui Selalu Ajak — Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.</p>
+      </SectionShell>
+    );
+  }
+
   return (
-    <SectionShell className="border-t border-theme-border py-10 text-center text-sm text-theme-muted">
-      <p>{section.data.closingMessage || "Terima kasih atas doa dan restu Anda."}</p>
-      <p className="mt-1">Dipersembahkan melalui Selalu Ajak — Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.</p>
+    <SectionShell className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
+      {useKenBurns ? (
+        <KenBurnsImage src={photo} config={motionConfig} className="absolute inset-0 -z-20" />
+      ) : (
+        <div className="absolute inset-0 -z-20 bg-cover bg-center" style={{ backgroundImage: `url(${photo})` }} />
+      )}
+      <div className="absolute inset-0 -z-10 bg-black/50" />
+      <Reveal config={motionConfig ?? { reveal: "fade" }}>
+        <p className="whitespace-pre-line text-white/90">{section.data.closingMessage || "Terima kasih atas doa dan restu Anda."}</p>
+        <p className="mt-3 text-sm text-white/70">Dipersembahkan melalui Selalu Ajak — Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.</p>
+      </Reveal>
     </SectionShell>
   );
-                       }
+    }
