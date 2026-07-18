@@ -7,6 +7,7 @@ import { formatDateID, formatRupiah, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PayInvoiceButton } from "@/components/dashboard/PayInvoiceButton";
 import { isMidtransConfigured, midtransSnapJsUrl } from "@/lib/midtrans";
+import { createNotification } from "@/lib/notifications";
 import type { Plan } from "@prisma/client";
 
 // BAB 18 — Subscription & Billing
@@ -74,6 +75,13 @@ async function markInvoicePaid(formData: FormData) {
       },
     }),
   ]);
+
+  await createNotification({
+    userId: session.user.id,
+    category: "subscription",
+    title: "Pembayaran berhasil",
+    body: `Pembayaran paket ${PLANS[invoice.plan].label} berhasil (simulasi). Langganan Anda aktif hingga ${newEndDate.toLocaleDateString("id-ID")}.`,
+  });
 
   redirect("/dashboard/billing");
 }
