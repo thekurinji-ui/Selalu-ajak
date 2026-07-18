@@ -13,10 +13,14 @@ export function TemplatePreviewCanvas({
   sections,
   templateName,
   primaryColor,
+  themeId,
 }: {
   sections: SectionInstance[];
   templateName: string;
   primaryColor?: string | null;
+  /** InvitationTemplate.defaultThemeId — preset tema (warna+font) yang sebenarnya
+   * dipilih admin saat upload template. Kalau tidak dikirim, fallback "elegant". */
+  themeId?: string | null;
 }) {
   const visibleSections = sections.filter((s) => s.visible);
 
@@ -38,7 +42,7 @@ export function TemplatePreviewCanvas({
     <div className="flex flex-col items-center gap-4 bg-slate-900 px-6 py-10">
       <div className="w-[390px] max-w-full overflow-hidden rounded-lg border-8 border-slate-800 bg-ivory shadow-2xl">
         <ThemeProvider
-          theme={{ theme: "elegant", primaryColor, secondaryColor: null, backgroundColor: null, fontId: null }}
+          theme={{ theme: themeId || "elegant", primaryColor, secondaryColor: null, backgroundColor: null, fontId: null }}
         >
           {visibleSections.length === 0 ? (
             <div className="flex min-h-[600px] flex-col items-center justify-center px-6 text-center">
