@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createNotification } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { QrScanner } from "@/components/dashboard/QrScanner";
 
@@ -12,11 +13,24 @@ async function manualCheckin(formData: FormData) {
   const guestId = formData.get("guestId") as string;
   if (!guestId) return;
 
+  const guest = await prisma.guest.findUnique({ where: { id: guestId }, include: { event: true, checkIn: true } });
+  if (!guest || guest.checkIn) return; // sudah check-in sebelumnya, tidak perlu notifikasi lagi
+
   await prisma.checkIn.upsert({
     where: { guestId },
     create: { guestId, method: "MANUAL" },
     update: {},
   });
+
+  const checkInCount = await prisma.checkIn.count({ where: { guest: { eventId: guest.eventId } } });
+  if (checkInCount === 1) {
+    await createNotification({
+      userId: guest.event.userId,
+      category: "checkin",
+      title: "Check-in pertama",
+      body: `${guest.name} adalah tamu pertama yang check-in di acara "${guest.event.name}".`,
+    });
+  }
 }
 
 export default async function CheckinPage({ searchParams }: { searchParams: { eventId?: string } }) {
