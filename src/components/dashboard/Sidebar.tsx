@@ -17,6 +17,7 @@ import {
   CreditCard,
   ShieldCheck,
   LogOut,
+  Bell,
 } from "lucide-react";
 
 // BAB 8.3 — Struktur Dashboard
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/dashboard/whatsapp", label: "WhatsApp Blast", icon: MessageCircle },
   { href: "/dashboard/gift", label: "Gift", icon: Gift },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/dashboard/notifications", label: "Notifikasi", icon: Bell },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
