@@ -50,8 +50,18 @@ export function MultiLayerParallax({
 
   if (!layers || layers.length === 0) return null;
 
+  // Kalau caller sudah nentuin utility position sendiri lewat className (mis.
+  // "absolute inset-0" dari CoverSection/EventDetailSection supaya full-bleed),
+  // JANGAN timpa lewat inline style — inline style selalu menang atas class,
+  // jadi override tanpa syarat di sini bikin "inset-0" gak berfungsi dan div
+  // ini collapse jadi tinggi 0 (anak-anaknya semua position:absolute, gak
+  // nyumbang tinggi ke parent). Fallback "relative" cuma dipasang kalau
+  // caller belum nentuin position apa pun.
+  const hasPositionClass = /\b(absolute|fixed|sticky|static|relative)\b/.test(className ?? "");
+  const wrapperClassName = hasPositionClass ? className : `${className ?? ""} relative`;
+
   return (
-    <div ref={ref} className={className} style={{ ...style, position: "relative", overflow: "hidden" }}>
+    <div ref={ref} className={wrapperClassName} style={{ ...style, overflow: "hidden" }}>
       {layers.map((layer, i) => (
         <Layer key={i} layer={layer} scrollYProgress={scrollYProgress} intensityScale={intensityScale} zIndex={i} />
       ))}
