@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { Download, Upload } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -7,12 +8,26 @@ import { normalizeWhatsappNumber } from "@/lib/whatsapp";
 import { parseGuestWorkbook } from "@/lib/guest-import";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { GuestRow } from "@/components/dashboard/GuestRow";
+
+// Pastikan event yang dimaksud memang milik user yang sedang login, supaya
+// eventId dari hidden input di form (bisa dimanipulasi client) tidak bisa
+// dipakai untuk menambah/mengubah/menghapus tamu di acara milik orang lain.
+async function assertOwnsEvent(eventId: string, userId: string) {
+  const event = await prisma.event.findFirst({ where: { id: eventId, userId } });
+  return Boolean(event);
+}
 
 // BAB 11.4 — Menambahkan Tamu (Tambah Manual)
 async function addGuest(formData: FormData) {
   "use server";
 
+  const session = await auth();
+  if (!session?.user?.id) return;
+
   const eventId = formData.get("eventId") as string;
+  if (!eventId || !(await assertOwnsEvent(eventId, session.user.id))) return;
+
   const parsed = guestSchema.safeParse({
     name: formData.get("name"),
     whatsapp: formData.get("whatsapp"),
@@ -21,7 +36,7 @@ async function addGuest(formData: FormData) {
     companions: formData.get("companions") || 0,
   });
 
-  if (!parsed.success || !eventId) return;
+  if (!parsed.success) return;
 
   await prisma.guest.create({
     data: {
@@ -33,6 +48,8 @@ async function addGuest(formData: FormData) {
       companions: parsed.data.companions,
     },
   });
+
+  revalidatePath("/dashboard/guests");
 }
 
 // BAB 11.5 — Import Tamu dari Excel. Client tinggal isi 1 file (xlsx/csv,
@@ -43,10 +60,14 @@ async function addGuest(formData: FormData) {
 async function importGuests(formData: FormData) {
   "use server";
 
+  const session = await auth();
   const eventId = formData.get("eventId") as string;
-  const file = formData.get("file") as File | null;
 
-  if (!eventId) redirect("/dashboard/guests");
+  if (!session?.user?.id || !eventId || !(await assertOwnsEvent(eventId, session.user.id))) {
+    redirect("/dashboard/guests");
+  }
+
+  const file = formData.get("file") as File | null;
 
   if (!file || file.size === 0) {
     redirect(
@@ -127,6 +148,70 @@ async function importGuests(formData: FormData) {
   if (skipped > 0) params.set("skipped", String(skipped));
 
   redirect(`/dashboard/guests?${params.toString()}`);
+}
+
+// BAB 11.4 — Edit Tamu. Hanya menyentuh field yang memang ada di form edit
+// (nama, whatsapp, kategori, jumlah pendamping); email & note sengaja tidak
+// diikutkan supaya data yang sudah ada (mis. hasil import Excel) tidak
+// tertimpa kosong hanya karena form edit tidak menampilkan kolom itu.
+async function updateGuest(formData: FormData) {
+  "use server";
+
+  const session = await auth();
+  if (!session?.user?.id) return;
+
+  const guestId = formData.get("guestId") as string;
+  if (!guestId) return;
+
+  const guest = await prisma.guest.findUnique({
+    where: { id: guestId },
+    include: { event: { select: { userId: true } } },
+  });
+  if (!guest || guest.event.userId !== session.user.id) return;
+
+  const parsed = guestSchema
+    .pick({ name: true, whatsapp: true, category: true, companions: true })
+    .safeParse({
+      name: formData.get("name"),
+      whatsapp: formData.get("whatsapp"),
+      category: formData.get("category") || undefined,
+      companions: formData.get("companions") || 0,
+    });
+  if (!parsed.success) return;
+
+  await prisma.guest.update({
+    where: { id: guestId },
+    data: {
+      name: parsed.data.name,
+      whatsapp: parsed.data.whatsapp,
+      category: parsed.data.category,
+      companions: parsed.data.companions,
+    },
+  });
+
+  revalidatePath("/dashboard/guests");
+}
+
+// BAB 11.4 — Hapus Tamu. RSVP, CheckIn, dan WhatsappRecipient milik tamu ini
+// ikut terhapus otomatis lewat onDelete: Cascade di schema.
+async function deleteGuest(formData: FormData) {
+  "use server";
+
+  const session = await auth();
+  if (!session?.user?.id) return;
+
+  const guestId = formData.get("guestId") as string;
+  if (!guestId) return;
+
+  const guest = await prisma.guest.findUnique({
+    where: { id: guestId },
+    include: { event: { select: { userId: true } } },
+  });
+  if (!guest || guest.event.userId !== session.user.id) return;
+
+  await prisma.guest.delete({ where: { id: guestId } });
+
+  revalidatePath("/dashboard/guests");
 }
 
 export default async function GuestsPage({
@@ -262,30 +347,25 @@ export default async function GuestsPage({
                   <th className="px-4 py-3">Kategori</th>
                   <th className="px-4 py-3">RSVP</th>
                   <th className="px-4 py-3">Check-in</th>
-                  <th className="px-4 py-3">QR</th>
+                  <th className="px-4 py-3">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {guests.map((guest) => (
-                  <tr key={guest.id} className="border-t border-champagne-50">
-                    <td className="px-4 py-3 font-medium text-slate-800">{guest.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{guest.whatsapp}</td>
-                    <td className="px-4 py-3 text-slate-600">{guest.category ?? "-"}</td>
-                    <td className="px-4 py-3">
-                      <Badge status={guest.rsvp?.status ?? "BELUM_MERESPONS"} />
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{guest.checkIn ? "Sudah Check-in" : "-"}</td>
-                    <td className="px-4 py-3">
-                      <a
-                        href={`/api/guests/${guest.id}/qrcode`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium text-forest-600 hover:underline"
-                      >
-                        Lihat QR
-                      </a>
-                    </td>
-                  </tr>
+                  <GuestRow
+                    key={guest.id}
+                    guest={{
+                      id: guest.id,
+                      name: guest.name,
+                      whatsapp: guest.whatsapp,
+                      category: guest.category,
+                      companions: guest.companions,
+                      rsvpStatus: guest.rsvp?.status ?? "BELUM_MERESPONS",
+                      checkedIn: Boolean(guest.checkIn),
+                    }}
+                    updateGuest={updateGuest}
+                    deleteGuest={deleteGuest}
+                  />
                 ))}
                 {guests.length === 0 && (
                   <tr>
@@ -310,22 +390,4 @@ function MiniStat({ label, value }: { label: string; value: number }) {
       <p className="mt-1 font-heading text-2xl font-semibold text-forest-700">{value}</p>
     </div>
   );
-}
-
-function Badge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    BELUM_MERESPONS: "bg-slate-100 text-slate-600",
-    AKAN_HADIR: "bg-success/10 text-success",
-    TIDAK_HADIR: "bg-danger/10 text-danger",
-  };
-  const label: Record<string, string> = {
-    BELUM_MERESPONS: "Belum Merespons",
-    AKAN_HADIR: "Akan Hadir",
-    TIDAK_HADIR: "Tidak Hadir",
-  };
-  return (
-    <span className={`rounded-full px-2 py-1 text-xs font-medium ${map[status]}`}>
-      {label[status]}
-    </span>
-  );
-                    }
+      }
