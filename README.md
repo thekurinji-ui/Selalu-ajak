@@ -50,7 +50,25 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
   `src/lib/invitation-themes.ts`, diterapkan lewat CSS variable oleh
   `ThemeProvider` — dipakai bersama oleh Live Preview & halaman publik
   `/i/{slug}` supaya hasilnya selalu identik
-- ✅ Guest Management (BAB 11)
+- ✅ **Upload Foto Sendiri** (BAB 10.7 — Customization tanpa kode) — client
+  bisa upload foto miliknya sendiri (cover, foto mempelai, galeri, dst)
+  langsung dari device lewat Invitation Builder (`SectionSettingsPanel`),
+  bukan cuma tempel link dari luar. Disimpan ke Cloudflare R2
+  (`POST /api/invitation/upload-image`, lihat `src/lib/r2.ts`), per-event di
+  folder `invitations/<eventId>/`. Butuh env `R2_*` terisi (lihat
+  `.env.example`) — dipakai juga oleh Admin Console untuk thumbnail/preview
+  template
+- ✅ **Guest Management** (BAB 11) — tambah tamu manual, **edit & hapus tamu**
+  langsung dari tabel (`GuestRow`, mode edit inline per-baris, hapus dengan
+  konfirmasi — data RSVP & check-in tamu itu ikut terhapus lewat cascade),
+  dan **import massal dari Excel/CSV** (BAB 11.5): client tinggal upload 1
+  file `.xlsx`/`.xls`/`.csv` (nama kolom fleksibel, lihat
+  `src/lib/guest-import.ts`), nomor WhatsApp dinormalisasi & duplikat
+  (dibanding tamu yang sudah ada maupun sesama baris di file yang sama)
+  otomatis dilewati — aman diupload ulang. Tombol "Unduh Template"
+  (`GET /api/guests/template`) menyediakan contoh format sebelum upload.
+  Semua aksi (tambah/edit/hapus/import) memverifikasi dulu acara itu benar
+  milik user yang login sebelum menyentuh data.
 - ✅ RSVP Management (BAB 12)
 - ✅ **WhatsApp Blast** — pengiriman sungguhan sudah tersambung ke
   [Fonnte](https://fonnte.com) (BAB 13): tombol "Kirim Sekarang" mengirim
@@ -193,20 +211,27 @@ dashboard/                        # BAB 8 — Overview, Events, Guests,
 #         Gift, Analytics, Settings
 dashboard/events/[id]/builder/    # BAB 10 — Invitation Builder (editor)
 i/[slug]/                         # BAB 17 — halaman undangan publik
+tema/heritage-original/           # Preview tema custom, masih statis
 api/auth/, api/register/
 api/invitation/                   # GET/PUT sections — Auto Save (BAB 10.9)
+api/invitation/upload-image/      # Upload foto sendiri ke R2 (BAB 10.7)
+api/guests/template/              # Download template Excel import tamu
 components/
 landing/                          # Navbar, Hero (BAB 6)
-dashboard/                        # Sidebar (BAB 8.3)
+dashboard/                        # Sidebar (BAB 8.3), GuestRow (BAB 11.4)
 builder/                          # Invitation Builder: LayersPanel,
-#   AddSectionDrawer, SectionSettingsPanel,
+#   AddSectionDrawer, SectionSettingsPanel, ThemeDrawer,
 #   PreviewCanvas, InvitationBuilder (BAB 10)
-invitation/                       # SectionRenderer — dipakai bersama oleh
-#   builder (preview) & halaman publik
+invitation/                       # SectionRenderer, ThemeProvider — dipakai
+#   bersama oleh builder (preview) & halaman publik
+invitation-themes/                # HeritageOriginalTheme — tema custom berdiri sendiri
 ui/                               # Button, Input primitives
 lib/
 prisma.ts, auth.ts, validation.ts, slug.ts, utils.ts
 invitation-sections.ts            # Skema & Section Library (BAB 10.4–10.5)
+invitation-themes.ts              # Preset Theme System (BAB 10.6–10.7)
+guest-import.ts                   # Parser Excel/CSV import tamu (BAB 11.5)
+whatsapp.ts, midtrans.ts, r2.ts, email.ts, notifications.ts
 prisma/
 schema.prisma                       # BAB 24 — Database Design
 
