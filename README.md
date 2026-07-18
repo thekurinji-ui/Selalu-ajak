@@ -50,7 +50,12 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
   `src/lib/invitation-themes.ts`, diterapkan lewat CSS variable oleh
   `ThemeProvider` — dipakai bersama oleh Live Preview & halaman publik
   `/i/{slug}` supaya hasilnya selalu identik
-- ✅ Guest Management (BAB 11)
+- ✅ **Guest Management** (BAB 11) — tambah tamu manual, dan **import massal
+  dari Excel/CSV** (BAB 11.5): client tinggal upload 1 file `.xlsx`/`.csv`
+  (nama kolom fleksibel, lihat `src/lib/guest-import.ts`), nomor WhatsApp
+  dinormalisasi & duplikat otomatis dilewati. Sediakan tombol "Unduh
+  Template" (`GET /api/guests/template`) supaya client tahu format yang
+  benar sebelum upload.
 - ✅ RSVP Management (BAB 12)
 - ✅ **WhatsApp Blast** — pengiriman sungguhan sudah tersambung ke
   [Fonnte](https://fonnte.com) (BAB 13): tombol "Kirim Sekarang" mengirim
