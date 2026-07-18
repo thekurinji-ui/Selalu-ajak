@@ -307,9 +307,11 @@ function CountdownSection({ section, event }: { section: SectionInstance; event:
 
   return (
     <SectionShell
-      className="mx-auto max-w-md px-6 py-16 text-center"
-      style={background ? { background } : undefined}
+      className="relative mx-auto max-w-md overflow-hidden px-6 py-16 text-center"
+      style={background ? { backgroundImage: `url(${background})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
     >
+      {background && <div className="absolute inset-0 -z-0 bg-black/45" />}
+      <div className="relative z-10">
       <Reveal config={motionConfig ?? { reveal: "fade" }}>
         <h2 className={`font-heading text-2xl font-semibold ${onDark ? "text-white" : "text-theme-primary"}`}>
           {section.data.title || "Menuju Hari Bahagia"}
@@ -335,6 +337,7 @@ function CountdownSection({ section, event }: { section: SectionInstance; event:
           ))}
         </div>
       </Reveal>
+      </div>
     </SectionShell>
   );
 }
@@ -604,4 +607,4 @@ function FooterSection({ section }: { section: SectionInstance }) {
       </Reveal>
     </SectionShell>
   );
-}
+          }
