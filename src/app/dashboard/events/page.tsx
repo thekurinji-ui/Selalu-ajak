@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { generateUniqueEventSlug } from "@/lib/slug";
 import { eventSchema } from "@/lib/validation";
 import { getEventUsage } from "@/lib/subscription";
+import { THEME_PRESETS } from "@/lib/invitation-themes";
 import { createNotification } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,14 @@ async function createEvent(formData: FormData) {
       })
     : null;
 
+  // Template sekarang membawa tema lengkap (bukan cuma primaryColor) — begitu
+  // user pilih template, warna + font ikut ke-set otomatis dari
+  // THEME_PRESETS, jadi user nggak perlu buka ThemeDrawer lagi kecuali mau
+  // kustomisasi lebih lanjut (opsional, di Invitation Builder).
+  const preset = template
+    ? THEME_PRESETS.find((p) => p.id === template.defaultThemeId) ?? THEME_PRESETS[0]
+    : null;
+
   const event = await prisma.event.create({
     data: {
       userId: session.user.id,
@@ -51,7 +60,15 @@ async function createEvent(formData: FormData) {
       city: parsed.data.city,
       slug,
       templateId: template?.id,
-      ...(template?.primaryColor ? { primaryColor: template.primaryColor } : {}),
+      ...(preset
+        ? {
+            theme: preset.id,
+            primaryColor: preset.colors.primary,
+            secondaryColor: preset.colors.secondary,
+            backgroundColor: preset.colors.background,
+            fontId: preset.fontId,
+          }
+        : {}),
       invitationPage: {
         create: { sections: template?.defaultSections ?? [] },
       },
@@ -144,8 +161,12 @@ export default async function EventsPage({
         {templates.length > 0 && (
           <div className="sm:col-span-2">
             <label className="mb-2 block text-sm font-medium text-slate-700">
-              Pilih Template (opsional)
+              Pilih Gaya Undangan (opsional)
             </label>
+            <p className="mb-2 text-xs text-slate-400">
+              Struktur dan tema (warna & font) sudah sepaket — tinggal pilih satu, bisa
+              disesuaikan lagi nanti di editor kalau mau.
+            </p>
             <div className="grid gap-3 sm:grid-cols-3">
               <label className="flex cursor-pointer flex-col overflow-hidden rounded-md border border-champagne-200 has-[:checked]:border-forest-600 has-[:checked]:ring-2 has-[:checked]:ring-forest-600">
                 <input type="radio" name="templateId" value="" defaultChecked className="sr-only" />
@@ -154,27 +175,37 @@ export default async function EventsPage({
                 </div>
                 <span className="px-2 py-2 text-xs font-medium text-slate-600">Mulai dari kosong</span>
               </label>
-              {templates.map((t) => (
-                <label
-                  key={t.id}
-                  className="flex cursor-pointer flex-col overflow-hidden rounded-md border border-champagne-200 has-[:checked]:border-forest-600 has-[:checked]:ring-2 has-[:checked]:ring-forest-600"
-                >
-                  <input type="radio" name="templateId" value={t.id} className="sr-only" />
-                  <img
-                    src={t.thumbnailUrl}
-                    alt={t.name}
-                    className="aspect-[3/4] w-full object-cover"
-                  />
-                  <span className="flex items-center justify-between gap-1 px-2 py-2 text-xs font-medium text-slate-600">
-                    {t.name}
-                    {t.isPremium && (
-                      <span className="rounded bg-champagne-100 px-1.5 py-0.5 text-[10px] font-semibold text-champagne-700">
-                        Premium
+              {templates.map((t) => {
+                const preset = THEME_PRESETS.find((p) => p.id === t.defaultThemeId) ?? THEME_PRESETS[0];
+                return (
+                  <label
+                    key={t.id}
+                    className="flex cursor-pointer flex-col overflow-hidden rounded-md border border-champagne-200 has-[:checked]:border-forest-600 has-[:checked]:ring-2 has-[:checked]:ring-forest-600"
+                  >
+                    <input type="radio" name="templateId" value={t.id} className="sr-only" />
+                    <img
+                      src={t.thumbnailUrl}
+                      alt={t.name}
+                      className="aspect-[3/4] w-full object-cover"
+                    />
+                    <span className="flex items-center justify-between gap-1 px-2 py-2 text-xs font-medium text-slate-600">
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: preset.colors.primary }}
+                          aria-hidden
+                        />
+                        {t.name}
                       </span>
-                    )}
-                  </span>
-                </label>
-              ))}
+                      {t.isPremium && (
+                        <span className="rounded bg-champagne-100 px-1.5 py-0.5 text-[10px] font-semibold text-champagne-700">
+                          Premium
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </div>
         )}
@@ -199,4 +230,4 @@ export default async function EventsPage({
       </div>
     </div>
   );
-}
+            }
