@@ -14,6 +14,8 @@ import { MOTION_DEFAULTS, type MotionConfig } from "@/lib/motion-config";
 const VARIANTS: Record<Exclude<NonNullable<MotionConfig["reveal"]>, "none">, { hidden: object; visible: object }> = {
   fade: { hidden: { opacity: 0 }, visible: { opacity: 1 } },
   slide: { hidden: { opacity: 0, y: 32 }, visible: { opacity: 1, y: 0 } },
+  "slide-left": { hidden: { opacity: 0, x: -48 }, visible: { opacity: 1, x: 0 } },
+  "slide-right": { hidden: { opacity: 0, x: 48 }, visible: { opacity: 1, x: 0 } },
   scale: { hidden: { opacity: 0, scale: 0.92 }, visible: { opacity: 1, scale: 1 } },
   // Curtain: elemen "dibuka" dari bawah pakai clip-path, kesannya seperti tirai.
   curtain: {
