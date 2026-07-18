@@ -9,6 +9,7 @@ import {
   deleteAccountSchema,
 } from "@/lib/validation";
 import { isEmailConfigured, sendAccountChangeEmail } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -78,6 +79,13 @@ async function changePassword(formData: FormData) {
     data: { userId: user.id, action: "PASSWORD_CHANGED", metadata: {} },
   });
 
+  await createNotification({
+    userId: user.id,
+    category: "account",
+    title: "Password diubah",
+    body: "Password akun Anda baru saja diubah. Kalau ini bukan Anda, segera amankan akun.",
+  });
+
   if (isEmailConfigured()) {
     await sendAccountChangeEmail(
       user.email,
@@ -125,6 +133,13 @@ async function changeEmail(formData: FormData) {
     data: { userId: user.id, action: "EMAIL_CHANGED", metadata: { from: oldEmail, to: parsed.data.newEmail } },
   });
 
+  await createNotification({
+    userId: user.id,
+    category: "account",
+    title: "Email diperbarui",
+    body: `Email akun Anda diubah dari ${oldEmail} ke ${parsed.data.newEmail}.`,
+  });
+
   if (isEmailConfigured()) {
     await sendAccountChangeEmail(
       oldEmail,
@@ -156,6 +171,28 @@ async function deleteAccount(formData: FormData) {
   redirect("/");
 }
 
+async function updateNotificationPreferences(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  // BAB 20.7 — checkbox yang tercentang = kirim FormData "on", yang tidak
+  // dicentang tidak muncul sama sekali di FormData (perilaku default HTML).
+  const preferences = {
+    rsvp: formData.get("pref_rsvp") === "on",
+    whatsapp: formData.get("pref_whatsapp") === "on",
+    subscription: formData.get("pref_subscription") === "on",
+    account: formData.get("pref_account") === "on",
+  };
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { notificationPreferences: preferences },
+  });
+
+  redirect("/dashboard/settings?success=notifications");
+}
+
 const LANGUAGE_LABEL: Record<string, string> = { id: "Bahasa Indonesia", en: "English" };
 const TIMEZONE_OPTIONS = ["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura"];
 
@@ -171,11 +208,13 @@ export default async function SettingsPage({
   if (!user) redirect("/login");
 
   const isGoogleAccount = !user.passwordHash;
+  const prefs = (user.notificationPreferences as Record<string, boolean> | null) ?? {};
 
   const SUCCESS_MESSAGE: Record<string, string> = {
     profile: "Profil berhasil diperbarui.",
     password: "Password berhasil diubah.",
     email: "Email berhasil diubah.",
+    notifications: "Preferensi notifikasi berhasil disimpan.",
   };
 
   return (
@@ -288,6 +327,31 @@ export default async function SettingsPage({
         )}
       </section>
 
+      {/* BAB 20.7 — Preferensi Notifikasi */}
+      <section className="rounded-lg border border-champagne-100 bg-white p-6 shadow-soft">
+        <h2 className="font-heading text-lg font-semibold text-forest-700">Preferensi Notifikasi</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Pilih kategori notifikasi in-app yang ingin Anda terima. Notifikasi seputar acara & check-in yang
+          sedang berlangsung selalu aktif.
+        </p>
+        <form action={updateNotificationPreferences} className="mt-4 space-y-3">
+          {[
+            { key: "pref_rsvp", label: "RSVP baru dari tamu", default: prefs.rsvp !== false },
+            { key: "pref_whatsapp", label: "Status pengiriman WhatsApp Blast", default: prefs.whatsapp !== false },
+            { key: "pref_subscription", label: "Status pembayaran & langganan", default: prefs.subscription !== false },
+            { key: "pref_account", label: "Aktivitas akun (ganti password/email)", default: prefs.account !== false },
+          ].map((item) => (
+            <label key={item.key} className="flex items-center gap-3 text-sm text-slate-700">
+              <input type="checkbox" name={item.key} defaultChecked={item.default} className="h-4 w-4 rounded border-champagne-300 text-forest-600 focus:ring-forest-500" />
+              {item.label}
+            </label>
+          ))}
+          <Button type="submit" variant="ghost">
+            Simpan Preferensi
+          </Button>
+        </form>
+      </section>
+
       {/* BAB 19.13 — Hapus Akun */}
       <section className="rounded-lg border border-red-200 bg-red-50 p-6">
         <h2 className="font-heading text-lg font-semibold text-red-700">Hapus Akun</h2>
@@ -305,4 +369,4 @@ export default async function SettingsPage({
       </section>
     </div>
   );
-  }
+}
