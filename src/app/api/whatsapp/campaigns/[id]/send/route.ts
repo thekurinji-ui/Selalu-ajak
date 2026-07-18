@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateSubscription } from "@/lib/subscription";
 import { PLANS } from "@/lib/plans";
+import { createNotification } from "@/lib/notifications";
 import { formatDateID } from "@/lib/utils";
 import {
   normalizeWhatsappNumber,
@@ -177,6 +178,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     .catch(() => {
       // Audit log best-effort, tidak boleh menggagalkan response.
     });
+
+  await createNotification({
+    userId: session.user.id,
+    category: "whatsapp",
+    title: finalStatus === "TERKIRIM" ? "Pengiriman WhatsApp Blast selesai" : "Pengiriman WhatsApp Blast gagal",
+    body:
+      finalStatus === "TERKIRIM"
+        ? `Kampanye "${campaign.name}" terkirim ke ${successCount} dari ${guests.length} tamu${failedCount ? ` (${failedCount} gagal)` : ""}.`
+        : `Kampanye "${campaign.name}" gagal terkirim ke semua ${guests.length} tamu. Cek nomor WhatsApp tamu atau status device Fonnte.`,
+  });
 
   return NextResponse.json({
     ok: true,
