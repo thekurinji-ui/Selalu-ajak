@@ -239,6 +239,72 @@ function Fields({
     case "wishes":
       return <p className="text-xs text-slate-400">Ucapan tamu tampil otomatis setelah undangan dipublikasikan.</p>;
 
+    case "event_detail":
+      return (
+        <>
+          <Field label="Judul (mis. Akad Nikah / Resepsi)">
+            <Input value={d.title || ""} onChange={(e) => set({ title: e.target.value })} placeholder="Akad Nikah" />
+          </Field>
+          <Field label="Hari">
+            <Input value={d.day || ""} onChange={(e) => set({ day: e.target.value })} placeholder="Sabtu" />
+          </Field>
+          <Field label="Tanggal">
+            <Input value={d.date || ""} onChange={(e) => set({ date: e.target.value })} placeholder="20 Februari 2027" />
+          </Field>
+          <Field label="Jam">
+            <Input value={d.time || ""} onChange={(e) => set({ time: e.target.value })} placeholder="08.00 - 10.00 WIB" />
+          </Field>
+          <Field label="Catatan Jam (opsional)">
+            <Input value={d.timeNote || ""} onChange={(e) => set({ timeNote: e.target.value })} placeholder="Khidmat bersama keluarga inti" />
+          </Field>
+          <Field label="Nama Lokasi">
+            <Input value={d.locationName || ""} onChange={(e) => set({ locationName: e.target.value })} placeholder="Gedung Serbaguna Kartika" />
+          </Field>
+          <Field label="Alamat">
+            <Textarea value={d.address || ""} onChange={(v) => set({ address: v })} rows={2} />
+          </Field>
+          <Field label="URL Google Maps">
+            <Input value={d.mapsUrl || ""} onChange={(e) => set({ mapsUrl: e.target.value })} placeholder="https://maps.google.com/..." />
+          </Field>
+          <Field label="Label Tombol">
+            <Input value={d.buttonLabel || ""} onChange={(e) => set({ buttonLabel: e.target.value })} placeholder="Lihat Lokasi" />
+          </Field>
+          <ImageUploadField
+            eventId={eventId}
+            label="Foto Latar"
+            value={d.photoUrl || ""}
+            onChange={(url) => set({ photoUrl: url })}
+          />
+        </>
+      );
+
+    case "cinematic_intro":
+      return (
+        <>
+          <ImageUploadField
+            eventId={eventId}
+            label="Poster Splash"
+            value={d.posterUrl || ""}
+            onChange={(url) => set({ posterUrl: url })}
+          />
+          <Field label="Label Kecil (accent)">
+            <Input value={d.accentLabel || ""} onChange={(e) => set({ accentLabel: e.target.value })} placeholder="SELALU AJAK" />
+          </Field>
+          <Field label="Label Seri (opsional)">
+            <Input value={d.seriesLabel || ""} onChange={(e) => set({ seriesLabel: e.target.value })} placeholder="SERI PERNIKAHAN" />
+          </Field>
+          <Field label="Sinopsis (opsional)">
+            <Textarea value={d.synopsis || ""} onChange={(v) => set({ synopsis: v })} rows={3} />
+          </Field>
+          <Field label="Label Tombol Buka">
+            <Input value={d.openButtonLabel || ""} onChange={(e) => set({ openButtonLabel: e.target.value })} placeholder="Mulai" />
+          </Field>
+          <Field label="URL Suara Chime (opsional, milik sendiri)">
+            <Input value={d.chimeUrl || ""} onChange={(e) => set({ chimeUrl: e.target.value })} placeholder="https://.../chime.mp3" />
+          </Field>
+        </>
+      );
+
     case "footer":
       return (
         <Field label="Pesan Penutup">
@@ -498,4 +564,4 @@ function ImageGalleryUploadField({
       {error && <p className="mt-1 text-[11px] text-danger">{error}</p>}
     </div>
   );
-        }
+          }
