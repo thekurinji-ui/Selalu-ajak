@@ -56,7 +56,7 @@ export function Reveal({
       style={style}
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: true, amount: 0.3 }}
+      viewport={{ once: true, amount: 0.1, margin: "0px 0px -15% 0px" }}
       variants={variant}
       transition={{ duration, delay, ease: easing }}
     >
