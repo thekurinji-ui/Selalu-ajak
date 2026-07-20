@@ -29,7 +29,7 @@ export default async function InvitationPage({
   // sumber personalisasi & tiket QR yang bisa dipercaya (bukan sekadar teks
   // bebas dari URL kayak `?to=`), karena qrCode-nya unik per tamu.
   const guest = searchParams.g
-    ? await prisma.guest.findFirst({ where: { qrCode: searchParams.g, eventId: event.id } })
+    ? await prisma.guest.findFirst({ where: { qrCode: searchParams.g, eventId: event.id }, include: { checkIn: true } })
     : null;
 
   const guestName = guest?.name ?? (searchParams.to ? decodeURIComponent(searchParams.to) : undefined);
@@ -144,6 +144,15 @@ export default async function InvitationPage({
               />
             </div>
             <p className="mt-3 text-sm font-medium text-forest-700">{guest.name}</p>
+            {guest.checkIn ? (
+              <p className="mx-auto mt-3 inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                Sudah check-in
+              </p>
+            ) : (
+              <p className="mx-auto mt-3 inline-block rounded-full bg-champagne-50 px-3 py-1 text-xs font-medium text-champagne-700">
+                Belum check-in
+              </p>
+            )}
           </section>
         )}
       </ThemeProvider>
