@@ -3,10 +3,10 @@
 > Ajak Mereka, Rayakan Ceritanya, Kenang Selamanya.
 
 Platform manajemen acara digital — website undangan, guest management, RSVP,
-WhatsApp Blast, QR Check-in, Digital Gift, dan Analytics dalam satu pengalaman
-yang sederhana dan elegan. Bagian dari ekosistem **The Kurinji**, bersaudara
-dengan [Kenang Kurinji](https://kurinji.asia) (dokumentasi & galeri kenangan
-acara).
+WhatsApp Blast, Reminder Otomatis, QR Check-in, Digital Gift, dan Analytics
+dalam satu pengalaman yang sederhana dan elegan. Bagian dari ekosistem
+**The Kurinji**, bersaudara dengan [Kenang Kurinji](https://kurinji.asia)
+(dokumentasi & galeri kenangan acara).
 
 Domain produksi: `selaluajak.kurinji.asia`
 
@@ -118,8 +118,21 @@ Ini adalah **scaffold fondasi (Phase 1 — Foundation)** hasil turunan dari
   `createNotification()` (`src/lib/notifications.ts`) — event dibuat/
   dipublikasikan, RSVP baru, WhatsApp Blast selesai/gagal, check-in pertama,
   pembayaran berhasil/gagal, ganti password/email. Push notification (Web &
-  Mobile) dan reminder H-30/H-7/H-1 otomatis (BAB 20.9, 20.15) belum
-  dibangun — keduanya butuh infra terjadwal (cron/queue) tersendiri
+  Mobile) belum dibangun — proyek terpisah, butuh app/browser subscription
+  tersendiri
+- ✅ **Reminder Acara Otomatis H-30/H-7/H-1** (BAB 20.9) — cron job harian
+  (`GET /api/cron/event-reminders`, didaftarkan di `vercel.json`, jalan
+  jam 08:00 WIB) mengecek semua acara `PUBLISHED` yang tanggalnya jatuh
+  tepat 30/7/1 hari dari sekarang, lalu mengirim pengingat WhatsApp ke
+  **pemilik acara** (bukan tamu — beda dari WhatsApp Blast BAB 13, jadi
+  tidak kena kuota `whatsappMessageLimit`) lewat device Fonnte yang sama
+  (`sendFonnteMessage` di `src/lib/whatsapp.ts`), plus notifikasi in-app
+  lewat `createNotification()`. Idempotent lewat tabel `EventReminderLog`
+  (unique per `eventId`+`milestone`) supaya tidak dobel kirim kalau cron
+  di-retry. Endpoint dilindungi header
+  `Authorization: Bearer $CRON_SECRET` yang otomatis dikirim Vercel Cron —
+  env `CRON_SECRET` wajib diisi di Vercel Project Settings (lihat
+  `.env.example`)
 
 Belum termasuk (lihat roadmap BAB 29 di blueprint): integrasi sungguhan
 WhatsApp Business API (masih pakai Fonnte, gateway non-resmi), gating
@@ -239,8 +252,8 @@ schema.prisma                       # BAB 24 — Database Design
 
 Lihat `prisma/schema.prisma` — entity utama: `User`, `Event`, `InvitationPage`,
 `InvitationTemplate`, `Guest`, `Rsvp`, `CheckIn`, `WhatsappCampaign`,
-`DigitalGift`, `Subscription`, `Invoice`, `Notification`, `AuditLog`,
-`AnalyticsEvent` — sesuai relasi di BAB 24.5.
+`DigitalGift`, `Subscription`, `Invoice`, `Notification`, `EventReminderLog`,
+`AuditLog`, `AnalyticsEvent` — sesuai relasi di BAB 24.5.
 
 ## Invitation Builder (BAB 10)
 
@@ -384,13 +397,17 @@ popup Snap-nya yang berhasil.
    **Kolaborasi Tim** (multi-role per acara), dan **Login OTP WhatsApp**
    masih ditandai "pengembangan berikutnya" di blueprint sendiri (19.16),
    jadi belum jadi prioritas.
-5. **Reminder otomatis H-30/H-14/H-7/H-1/Hari-H** (BAB 20.9) dan **Push
-   Notification Web/Mobile** (BAB 20.15) belum dibangun — Notification
-   Center sekarang baru trigger berbasis aktivitas (event-driven, dipanggil
-   langsung dari kode saat sesuatu terjadi), belum ada bagian yang jalan
-   berdasarkan waktu (cron/scheduled job) buat ngecek "acara mana yang
-   H-7 hari ini" dst. Butuh Vercel Cron Jobs atau sejenisnya kalau mau
-   dibangun.
+5. **Verifikasi cron reminder di Production** — `EventReminderLog` baru
+   ditambahkan lewat migration `20260722000000_add_event_reminder_log`,
+   jadi pastikan sudah ter-apply (cek tabel `event_reminder_logs` di Neon).
+   Setelah itu, cek juga tab **Cron Jobs** di Vercel Dashboard sudah
+   mendaftarkan `/api/cron/event-reminders`, dan `CRON_SECRET` sudah terisi
+   di Environment Variables. Bisa dites manual:
+   `curl -H "Authorization: Bearer $CRON_SECRET" https://selaluajak.kurinji.asia/api/cron/event-reminders`.
+   Reminder H-14 dan Hari-H (disebut di roadmap blueprint 20.9) belum
+   dibangun — baru H-30/H-7/H-1; dan reminder saat ini hanya lewat
+   WhatsApp + in-app, belum ada channel email untuk reminder ini (beda
+   dari WhatsApp Blast yang memang khusus tamu, ini ke pemilik acara).
 6. Gating **template Premium**: saat ini badge "Premium" di pemilihan template
    (`/dashboard/events`) baru bersifat visual — belum ada pengecekan paket
    langganan (`PLANS.*`) yang memblokir user paket gratis memilih template
@@ -416,6 +433,10 @@ popup Snap-nya yang berhasil.
     pindahkan proses kirim di `POST /api/whatsapp/campaigns/[id]/send` dari
     loop sinkron ke queue/background job — saat ini dibatasi durasi function
     Vercel (`maxDuration = 60`).
+11. **Push Notification Web/Mobile** (BAB 20.15) belum dibangun — beda dari
+    reminder H-30/H-7/H-1 yang sudah jalan lewat WhatsApp, ini soal browser/
+    app push notification (Web Push API + VAPID keys, atau FCM untuk mobile).
+    Proyek tersendiri, belum ada scaffold sama sekali di repo ini.
 
 ---
 
