@@ -224,7 +224,6 @@ dashboard/                        # BAB 8 — Overview, Events, Guests,
 #         Gift, Analytics, Settings
 dashboard/events/[id]/builder/    # BAB 10 — Invitation Builder (editor)
 i/[slug]/                         # BAB 17 — halaman undangan publik
-tema/heritage-original/           # Preview tema custom, masih statis
 api/auth/, api/register/
 api/invitation/                   # GET/PUT sections — Auto Save (BAB 10.9)
 api/invitation/upload-image/      # Upload foto sendiri ke R2 (BAB 10.7)
@@ -237,7 +236,6 @@ builder/                          # Invitation Builder: LayersPanel,
 #   PreviewCanvas, InvitationBuilder (BAB 10)
 invitation/                       # SectionRenderer, ThemeProvider — dipakai
 #   bersama oleh builder (preview) & halaman publik
-invitation-themes/                # HeritageOriginalTheme — tema custom berdiri sendiri
 ui/                               # Button, Input primitives
 lib/
 prisma.ts, auth.ts, validation.ts, slug.ts, utils.ts
@@ -280,11 +278,6 @@ kolom `InvitationPage.sections: Json`. Diakses lewat
   di field tema pada `Event` dan ikut Auto Save. `ThemeProvider` menyuntikkan
   variabel CSS `--sa-*` yang dipakai token Tailwind `theme-*`, jadi seluruh
   section otomatis ikut berubah tanpa logika tambahan per-komponen.
-
-Ada juga `HeritageOriginalTheme` (`src/components/invitation-themes/`) —
-tema custom-designed yang bisa dilihat previewnya di `/tema/heritage-original`,
-tapi **masih statis** (pakai data contoh, belum dipetakan dari
-`InvitationPage.sections` atau data `Event`/`Guest` asli).
 
 Belum tercakup dari BAB 10: Custom CSS, gating template Premium ke paket
 langganan tertentu, AI Copy/Theme Assistant, dan Version History (10.15,
@@ -365,31 +358,14 @@ popup Snap-nya yang berhasil.
 
 ## Langkah selanjutnya
 
-1. **Migration Theme System yang baru dibuat** — kolom `secondaryColor`,
-   `backgroundColor`, `fontId` di `Event` (BAB 10.6–10.7) ternyata belum
-   pernah punya file migration sejak awal dibuat. Migration
-   `20260721000000_add_invitation_theme_fields` baru ditambahkan di sesi ini
-   — **commit & push** supaya Vercel menjalankannya lewat
-   `prisma migrate deploy`, kalau tidak fitur ganti tema akan error di
-   Production (kolomnya belum ada di database walau kodenya sudah menulis
-   ke situ). Migration `add_user_city` dan `add_notification_center` sendiri
-   sudah tercommit sebelumnya — cek tabel `events`/`users`/`notifications`
-   di database Production (psql atau Neon dashboard) kalau mau memastikan
-   ketiganya benar sudah diterapkan.
-2. **Verifikasi rename env var storage di Vercel** — kalau sempat rename
-   `S3_BUCKET`/`S3_ACCESS_KEY_ID`/dst. jadi `R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/
-   `R2_BUCKET_NAME`/`R2_PUBLIC_URL`, dan `MIDTRANS_CLIENT_KEY` jadi
-   `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`, coba tes sekali di Production: upload
-   foto lewat Invitation Builder, dan alur bayar Midtrans — supaya yakin
-   nggak ada nama variabel lama yang ke-skip pas rename manual.
-3. **Setup Resend** untuk fitur Lupa Password beneran ngirim email: daftar
+1. **Setup Resend** untuk fitur Lupa Password beneran ngirim email: daftar
    di [resend.com](https://resend.com), verifikasi domain
    `selaluajak.kurinji.asia` (atau subdomain email khusus), lalu isi
    `RESEND_API_KEY` di Vercel. Tanpa ini, fitur lupa password tetap jalan
    tapi cuma dalam mode development (link reset tampil di halaman, bukan
    email sungguhan) — jangan sampai lupa isi sebelum ada user asli yang
    butuh reset password.
-4. Sisa BAB 19 yang belum dikerjakan: **manajemen sesi/perangkat** (19.9 —
+2. Sisa BAB 19 yang belum dikerjakan: **manajemen sesi/perangkat** (19.9 —
    daftar perangkat yang login + tombol akhiri sesi tertentu) belum ada,
    karena NextAuth di project ini pakai `strategy: "jwt"` (token stateless
    tanpa tabel Session di database), jadi butuh mekanisme tambahan (versi
@@ -397,28 +373,17 @@ popup Snap-nya yang berhasil.
    **Kolaborasi Tim** (multi-role per acara), dan **Login OTP WhatsApp**
    masih ditandai "pengembangan berikutnya" di blueprint sendiri (19.16),
    jadi belum jadi prioritas.
-5. **Verifikasi cron reminder di Production** — `EventReminderLog` baru
-   ditambahkan lewat migration `20260722000000_add_event_reminder_log`,
-   jadi pastikan sudah ter-apply (cek tabel `event_reminder_logs` di Neon).
-   Setelah itu, cek juga tab **Cron Jobs** di Vercel Dashboard sudah
-   mendaftarkan `/api/cron/event-reminders`, dan `CRON_SECRET` sudah terisi
-   di Environment Variables. Bisa dites manual:
-   `curl -H "Authorization: Bearer $CRON_SECRET" https://selaluajak.kurinji.asia/api/cron/event-reminders`.
-   Reminder H-14 dan Hari-H (disebut di roadmap blueprint 20.9) belum
-   dibangun — baru H-30/H-7/H-1; dan reminder saat ini hanya lewat
-   WhatsApp + in-app, belum ada channel email untuk reminder ini (beda
-   dari WhatsApp Blast yang memang khusus tamu, ini ke pemilik acara).
-6. Gating **template Premium**: saat ini badge "Premium" di pemilihan template
+3. Gating **template Premium**: saat ini badge "Premium" di pemilihan template
    (`/dashboard/events`) baru bersifat visual — belum ada pengecekan paket
    langganan (`PLANS.*`) yang memblokir user paket gratis memilih template
    Premium. Tambahkan pengecekan itu di `createEvent`
    (`src/app/dashboard/events/page.tsx`), mirip pola `getEventUsage`.
-7. Bangun enforcement untuk baris `PLAN_FEATURES` yang masih sebatas
+4. Bangun enforcement untuk baris `PLAN_FEATURES` yang masih sebatas
    tampilan (lihat daftarnya di section "Paket Langganan" di atas) — paling
    mendesak: form Digital Gift (`/dashboard/gift/page.tsx`) baru menangani 1
    rekening, padahal skema `bankAccounts` (JSON array) sudah siap menampung
    banyak akun sesuai kuota tiap paket.
-8. **WhatsApp Blast dari nomor pribadi client, otomatis (bukan manual)**:
+5. **WhatsApp Blast dari nomor pribadi client, otomatis (bukan manual)**:
    `Kirim Manual via WA Pribadi` (link `wa.me`) sudah tersedia sebagai jalan
    cepat, tapi masih satu-satu per tamu. Kalau ke depan butuh yang otomatis
    dari nomor pribadi tiap client, ada 2 opsi: (a) tiap client bikin device
@@ -428,12 +393,12 @@ popup Snap-nya yang berhasil.
    client (perlu verifikasi bisnis & approval template dari Meta, biaya per
    pesan ditagih langsung ke client) — jauh lebih besar scope-nya, proyek
    tersendiri.
-9. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
-10. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
+6. Sambungkan ke Kenang Kurinji untuk galeri dokumentasi pasca-acara (BAB 4.10).
+7. Untuk WhatsApp Blast dalam skala besar (ratusan/ribuan tamu sekaligus),
     pindahkan proses kirim di `POST /api/whatsapp/campaigns/[id]/send` dari
     loop sinkron ke queue/background job — saat ini dibatasi durasi function
     Vercel (`maxDuration = 60`).
-11. **Push Notification Web/Mobile** (BAB 20.15) belum dibangun — beda dari
+8. **Push Notification Web/Mobile** (BAB 20.15) belum dibangun — beda dari
     reminder H-30/H-7/H-1 yang sudah jalan lewat WhatsApp, ini soal browser/
     app push notification (Web Push API + VAPID keys, atau FCM untuk mobile).
     Proyek tersendiri, belum ada scaffold sama sekali di repo ini.
