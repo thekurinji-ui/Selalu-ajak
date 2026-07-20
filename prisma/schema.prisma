@@ -208,6 +208,7 @@ model Event {
   whatsappBlasts  WhatsappCampaign[]
   analyticsEvents AnalyticsEvent[]
   auditLogs       AuditLog[]
+  reminderLogs    EventReminderLog[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -507,4 +508,23 @@ model AuditLog {
   @@index([userId])
   @@index([eventId])
   @@map("audit_logs")
+}
+// ---------------------------------------------------------------------------
+// Event Reminders (BAB 20.9) — reminder otomatis H-30/H-7/H-1 lewat WhatsApp,
+// dikirim ke pemilik acara (bukan tamu) oleh cron job harian. Satu baris
+// per (event, milestone) yang sudah berhasil dikirim — dicek sebelum kirim
+// supaya idempotent walau cron kepanggil ulang / retry di hari yang sama.
+// ---------------------------------------------------------------------------
+
+model EventReminderLog {
+  id        String   @id @default(uuid())
+  eventId   String   @map("event_id")
+  milestone Int      // jumlah hari sebelum acara: 30, 7, atau 1
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, milestone])
+  @@index([eventId])
+  @@map("event_reminder_logs")
 }
