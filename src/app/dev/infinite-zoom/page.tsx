@@ -71,7 +71,6 @@ export default function InfiniteZoomDevPage() {
             body: "Dan kini kami siap melangkah bersama, selamanya.",
           },
         ]}
-        highlightPhotoUrl="/FotoDemo/gallery-01.webp"
         gallery={[
           "/FotoDemo/gallery-01.webp",
           "/FotoDemo/gallery-02.webp",
@@ -80,11 +79,6 @@ export default function InfiniteZoomDevPage() {
           "/FotoDemo/gallery-05.webp",
           "/FotoDemo/gallery-06.webp",
         ]}
-        location={{
-          venueName: "Grand Ballroom, Jakarta",
-          address: "Jl. Sudirman No. 45, Jakarta Selatan",
-          mapsUrl: "https://maps.google.com",
-        }}
         digitalGift={{
           message: "Kehadiran dan doa restu Anda sudah menjadi hadiah yang sangat berarti bagi kami.",
           accounts: [{ bank: "BCA", number: "1234567890", holder: "Ayu Lestari" }],
