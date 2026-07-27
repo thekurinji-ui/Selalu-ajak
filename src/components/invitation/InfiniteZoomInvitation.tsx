@@ -72,9 +72,13 @@ const ASSET = "/templates/luxury-parallax-minang";
 // Satuan kanvas bebas ("cu"), BUKAN pixel layar.
 const CANVAS = { width: 1000, height: 1800 };
 
-// Zoom di waypoint "cover" — jadi titik referensi tempat SEMUA lapisan
-// depth selalu presisi menyatu (lihat useDepthTransform).
-const ZOOM_BASE = 0.42;
+// Multiplier zoom relatif terhadap "cover scale" (lihat useViewportCoverScale
+// di bawah). 1.0 = persis framing cover (mural full-bleed nutup layar tanpa
+// sisa kosong). Angka lain hasil bagi nilai zoom lama (yang dulu absolut,
+// dikalibrasi ke layar ~420px) dengan 0.42, supaya rasio zoom-nya SAMA
+// persis seperti sebelumnya, cuma sekarang responsive ke ukuran layar apa
+// pun — bukan angka pixel tetap lagi.
+const COVER = 1.0;
 
 // Eksponen kedalaman per lapisan. 1.0 = lapisan referensi (rumah gadang).
 // <1 = lebih "jauh" dari kamera (zoom & geser lebih lambat).
@@ -119,24 +123,24 @@ const RESEPSI_CLOUD = { file: "cloud-02.webp", cardCx: 780, cardCy: 230, style: 
 /** Bangun urutan waypoint kamera secara dinamis, tergantung jumlah acara & bab kisah cinta. */
 function buildWaypoints(eventsCount: number, storyCount: number): CameraWaypoint[] {
   const wps: CameraWaypoint[] = [
-    { id: "cover", cx: 500, cy: 900, zoom: ZOOM_BASE },
-    { id: "opening", cx: OPENING_CLOUD.cardCx, cy: OPENING_CLOUD.cardCy, zoom: 1.55 },
-    { id: "hero-photo", cx: 500, cy: 1420, zoom: 1.4 },
-    { id: "bride-focus", cx: 390, cy: 1380, zoom: 2.2 },
-    { id: "bride-info", cx: 150, cy: 1380, zoom: 1.9 },
-    { id: "mid-breather", cx: 500, cy: 1420, zoom: 1.3 },
-    { id: "groom-focus", cx: 610, cy: 1380, zoom: 2.2 },
-    { id: "groom-info", cx: 850, cy: 1380, zoom: 1.9 },
-    { id: "countdown", cx: 500, cy: 1390, zoom: 1.75 },
+    { id: "cover", cx: 500, cy: 900, zoom: COVER },
+    { id: "opening", cx: OPENING_CLOUD.cardCx, cy: OPENING_CLOUD.cardCy, zoom: 3.69 },
+    { id: "hero-photo", cx: 500, cy: 1420, zoom: 3.33 },
+    { id: "bride-focus", cx: 390, cy: 1380, zoom: 5.24 },
+    { id: "bride-info", cx: 150, cy: 1380, zoom: 4.52 },
+    { id: "mid-breather", cx: 500, cy: 1420, zoom: 3.1 },
+    { id: "groom-focus", cx: 610, cy: 1380, zoom: 5.24 },
+    { id: "groom-info", cx: 850, cy: 1380, zoom: 4.52 },
+    { id: "countdown", cx: 500, cy: 1390, zoom: 4.17 },
   ];
-  if (eventsCount > 0) wps.push({ id: "event-0", cx: 800, cy: 1550, zoom: 0.85 });
-  if (eventsCount > 1) wps.push({ id: "event-1", cx: RESEPSI_CLOUD.cardCx, cy: RESEPSI_CLOUD.cardCy, zoom: 1.55 });
+  if (eventsCount > 0) wps.push({ id: "event-0", cx: 800, cy: 1550, zoom: 2.02 });
+  if (eventsCount > 1) wps.push({ id: "event-1", cx: RESEPSI_CLOUD.cardCx, cy: RESEPSI_CLOUD.cardCy, zoom: 3.69 });
   const storySlots = STORY_CLOUD_SLOTS.slice(0, Math.min(storyCount, STORY_CLOUD_SLOTS.length));
   storySlots.forEach((slot, i) => {
-    wps.push({ id: `love-story-${i}`, cx: slot.cardCx, cy: slot.cardCy, zoom: 1.55 });
+    wps.push({ id: `love-story-${i}`, cx: slot.cardCx, cy: slot.cardCy, zoom: 3.69 });
   });
-  wps.push({ id: "gallery", cx: 280, cy: 1650, zoom: 1.55 });
-  wps.push({ id: "cover-out", cx: 500, cy: 900, zoom: ZOOM_BASE });
+  wps.push({ id: "gallery", cx: 280, cy: 1650, zoom: 3.69 });
+  wps.push({ id: "cover-out", cx: 500, cy: 900, zoom: COVER });
   return wps;
 }
 
@@ -228,6 +232,35 @@ function useCountdown(target: string | Date) {
   return remaining;
 }
 
+/**
+ * Skala supaya CANVAS selalu menutup penuh viewport ("cover", bukan
+ * "contain") — persis seperti object-fit:cover — apa pun ukuran/rasio
+ * layarnya, jadi tidak ada bar/celah kosong di pinggir. Dihitung ulang
+ * setiap resize.
+ *
+ * CATATAN JUJUR: di layar sangat lebar (desktop ultra-wide) ini berarti
+ * framing "cover" jadi lebih zoom-in dan bagian atas/bawah mural terpotong
+ * lebih banyak — trade-off yang tidak terhindarkan supaya tidak ada ruang
+ * kosong sama sekali. Untuk pengalaman ini (undangan yang mayoritas dibuka
+ * dari HP) itu proporsional; kalau nanti mau versi khusus desktop yang
+ * "contain" (boleh ada letterbox), tinggal tambah breakpoint di sini.
+ */
+function useViewportCoverScale() {
+  const getScale = () => {
+    if (typeof window === "undefined") return 1;
+    return Math.max(window.innerWidth / CANVAS.width, window.innerHeight / CANVAS.height);
+  };
+  const [scale, setScale] = useState(getScale);
+  useEffect(() => {
+    const onResize = () => setScale(getScale());
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return scale;
+}
+
 // ---------------------------------------------------------------------------
 // Komponen utama
 // ---------------------------------------------------------------------------
@@ -247,6 +280,7 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
   const storyCount = props.loveStory?.length ?? 0;
   const waypoints = buildWaypoints(props.events.length, storyCount);
   const n = waypoints.length;
+  const coverScale = useViewportCoverScale();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -257,7 +291,9 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
   const breakpoints = waypoints.map((_, i) => i / (n - 1));
   const cxMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.cx));
   const cyMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.cy));
-  const zoomMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.zoom));
+  // Multiplier waypoint (COVER=1.0, dst.) dikalikan coverScale supaya kanvas
+  // selalu nutup penuh layar, apa pun ukurannya — lihat useViewportCoverScale.
+  const zoomMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.zoom * coverScale));
 
   // Teks cover (eyebrow, judul, nama tamu) hanya kelihatan jelas saat di
   // waypoint "cover" & "cover-out" — cepat pudar begitu kamera mulai
@@ -269,7 +305,7 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
     <div className="relative bg-theme-bg">
       {/* --- Bagian 1: mural rumah gadang, scroll-jacked, n waypoint --- */}
       <div ref={containerRef} className="relative" style={{ height: `${n * 90}vh` }}>
-        <div className="sticky top-0 h-screen w-full overflow-hidden bg-[#EFE7D2]">
+        <div className="sticky top-0 h-[100dvh] w-full overflow-hidden bg-[#EFE7D2]">
           <MinangMuralScene
             {...props}
             waypoints={waypoints}
@@ -277,6 +313,7 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
             cxMV={cxMV}
             cyMV={cyMV}
             zoomMV={zoomMV}
+            coverScale={coverScale}
             coverTextOpacity={coverTextOpacity}
           />
           <ScrollProgressHint progress={scrollYProgress} />
