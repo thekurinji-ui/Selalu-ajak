@@ -433,7 +433,7 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
         DEPTH.mountain,
         20,
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={`${ASSET}/gunung-kerinci.webp`} alt="" className="absolute bottom-0 left-0 w-full" />
+        <img src={`${ASSET}/gunung-kerinci.webp`} alt="" className="absolute top-[88%] left-0 w-full" />
       )}
 
       {layer(
@@ -441,9 +441,9 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
         25,
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`${ASSET}/pohon-01.webp`} alt="" className="absolute top-[58%] left-[-4%] w-[18%]" />
+          <img src={`${ASSET}/pohon-02.webp`} alt="" className="absolute top-[88%] left-[-4%] w-[18%]" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`${ASSET}/pohon-02.webp`} alt="" className="absolute top-[54%] right-[-4%] w-[19%]" />
+          <img src={`${ASSET}/pohon-01.webp`} alt="" className="absolute top-[88%] right-[-4%] w-[19%]" />
         </>
       )}
 
@@ -462,10 +462,11 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
         40,
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`${ASSET}/rumah-gadang-hero.webp`} alt="" className="absolute bottom-0 left-[7.5%] w-[85%]" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${ASSET}/rumah-gadang-hero.webp`} alt="" className="absolute bottom-0 left-0 w-[100%]" />
+          <div className="absolute top-0 left-0 w-full overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`${ASSET}/top-ornament.webp`} alt="" className="absolute top-0 left-0 w-full" />
-
+          </div>
           <div className="absolute bottom-0 left-0 h-[3.5%] w-full overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`${ASSET}/songket-divider-bottom.webp`} alt="" className="h-full w-full object-cover object-bottom" />
