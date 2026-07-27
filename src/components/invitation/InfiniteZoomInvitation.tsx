@@ -47,6 +47,13 @@ import {
 // system. Cek halaman tes di src/app/dev/infinite-zoom/page.tsx.
 //
 // CATATAN JUJUR:
+// - Komposisi ground layer mengikuti referensi: pohon dibuat LEBIH KECIL
+//   (18-19% lebar, bukan ~25%) dan jadi backdrop selapis dengan gunung
+//   (DEPTH.treesBg, di BELAKANG rumah gadang & foto) — bukan pohon besar
+//   di paling depan seperti revisi sebelumnya. Foto mempelai juga
+//   diperkecil (38% lebar) biar proporsional dengan rumah gadang. Ada
+//   list songket tipis tambahan di dasar mural (dekat kaki mempelai)
+//   sebagai pasangan top-ornament di atas.
 // - Depth exponent per lapisan (lihat `DEPTH`) dikalibrasi rasa/visual,
 //   bukan hasil pengukuran fisik. Kalau efek parallax-nya kurang/kelewat
 //   kerasa di satu lapisan tertentu, cukup naik/turunkan angkanya sedikit
@@ -76,12 +83,12 @@ const DEPTH = {
   sky: 0.15,
   clouds: 0.45,
   mountain: 0.55,
+  treesBg: 0.68,
   behind: 0.85,
   house: 1.0,
   midContent: 1.08,
   photo: 1.15,
   gallery: 1.2,
-  trees: 1.35,
 };
 
 interface CameraWaypoint {
@@ -120,7 +127,7 @@ function buildWaypoints(eventsCount: number, storyCount: number): CameraWaypoint
     { id: "mid-breather", cx: 500, cy: 1420, zoom: 1.3 },
     { id: "groom-focus", cx: 610, cy: 1380, zoom: 2.2 },
     { id: "groom-info", cx: 850, cy: 1380, zoom: 1.9 },
-    { id: "countdown", cx: 500, cy: 1300, zoom: 1.75 },
+    { id: "countdown", cx: 500, cy: 1390, zoom: 1.75 },
   ];
   if (eventsCount > 0) wps.push({ id: "event-0", cx: 800, cy: 1550, zoom: 0.85 });
   if (eventsCount > 1) wps.push({ id: "event-1", cx: RESEPSI_CLOUD.cardCx, cy: RESEPSI_CLOUD.cardCy, zoom: 1.55 });
@@ -457,12 +464,24 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
         <img src={`${ASSET}/gunung-kerinci.webp`} alt="" className="absolute bottom-0 left-0 w-full" />
       )}
 
+      {/* --- Lapisan 3b: pohon — backdrop kecil di kiri-kanan, selapis dengan gunung, DI BELAKANG rumah gadang & foto (bukan foreground) --- */}
+      {layer(
+        DEPTH.treesBg,
+        25,
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${ASSET}/pohon-01.webp`} alt="" className="absolute top-[58%] left-[-4%] w-[18%]" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${ASSET}/pohon-02.webp`} alt="" className="absolute top-[54%] right-[-4%] w-[19%]" />
+        </>
+      )}
+
       {/* --- Lapisan 4: countdown — SENGAJA di lapisan lebih "jauh" dari foto mempelai, digambar SEBELUM lapisan foto supaya benar-benar tertutup dari depan --- */}
       {countdownTarget ? (
         layer(
           DEPTH.behind,
           30,
-          <Positioned cx={500} cy={1300} width={300} opacity={countdownOpacity}>
+          <Positioned cx={500} cy={1390} width={300} opacity={countdownOpacity}>
             <CountdownCardContent target={countdownTarget} />
           </Positioned>
         )
@@ -476,554 +495,4 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`${ASSET}/rumah-gadang-hero.webp`} alt="" className="absolute bottom-0 left-[7.5%] w-[85%]" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`${ASSET}/top-ornament.webp`} alt="" className="absolute top-0 left-0 w-full" />
-
-          <motion.div className="absolute top-[7%] w-full text-center" style={{ opacity: coverTextOpacity }}>
-            <p className="font-theme-body text-[11px] uppercase tracking-[0.4em] text-[#EEDFBE]/90">{coverEyebrow}</p>
-          </motion.div>
-          <motion.div className="absolute top-[52%] w-full text-center" style={{ opacity: coverTextOpacity }}>
-            <h1 className="font-theme-heading text-2xl text-[#FFFDF8]" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
-              {coupleNames}
-            </h1>
-            {coverDateLabel ? <p className="mt-1 font-theme-body text-xs text-[#EEDFBE]/85">{coverDateLabel}</p> : null}
-            {guestName ? (
-              <p className="mt-2 inline-block rounded-full bg-black/25 px-4 py-1 font-theme-body text-xs text-[#FFFDF8] backdrop-blur-sm">
-                Kepada Yth. {guestName}
-              </p>
-            ) : null}
-          </motion.div>
-
-          {akadEvent ? (
-            <Positioned cx={800} cy={1550} width={380} opacity={event0Opacity}>
-              <EventCardContent event={akadEvent} />
-            </Positioned>
-          ) : null}
-        </>
-      )}
-
-      {/* --- Lapisan 6: info mempelai — melayang sedikit di depan dinding rumah --- */}
-      {layer(
-        DEPTH.midContent,
-        50,
-        <>
-          <Positioned cx={150} cy={1380} width={260} opacity={brideInfoOpacity}>
-            <PersonInfoCard person={bride} roleLabel="Mempelai Wanita" />
-          </Positioned>
-          <Positioned cx={850} cy={1380} width={260} opacity={groomInfoOpacity}>
-            <PersonInfoCard person={groom} roleLabel="Mempelai Pria" />
-          </Positioned>
-        </>
-      )}
-
-      {/* --- Lapisan 7: foto mempelai — PNG transparan, tanpa frame, berdiri di depan rumah gadang --- */}
-      {layer(
-        DEPTH.photo,
-        60,
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={couplePhotoUrl}
-            alt=""
-            className="absolute bottom-0 left-1/2 w-[46%] -translate-x-1/2 drop-shadow-[0_18px_28px_rgba(0,0,0,0.35)]"
-          />
-          <Positioned cx={500} cy={1730} width={320} opacity={heroPhotoOpacity}>
-            <p className="text-center font-theme-heading text-lg italic text-[#FFFDF8]" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
-              {coupleNames}
-            </p>
-          </Positioned>
-        </>
-      )}
-
-      {/* --- Lapisan 8: galeri foto — depan rumah gadang, agak nyamping --- */}
-      {gallery.length > 0
-        ? layer(
-            DEPTH.gallery,
-            65,
-            <Positioned cx={280} cy={1650} width={340} opacity={galleryOpacity}>
-              <GalleryCardContent photos={gallery} coupleNames={coupleNames} />
-            </Positioned>
-          )
-        : null}
-
-      {/* --- Lapisan 9: pohon — paling dekat, foreground, gerak paling cepat --- */}
-      {layer(
-        DEPTH.trees,
-        70,
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`${ASSET}/pohon-01.webp`} alt="" className="absolute bottom-0 left-[-3%] w-[24%]" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`${ASSET}/pohon-02.webp`} alt="" className="absolute bottom-0 right-[-3%] w-[26%]" />
-        </>
-      )}
-    </div>
-  );
-}
-
-/** Elemen konten yang dipatok di titik (cx, cy) kanvas, center-anchored. Opacity opsional untuk efek fade-in/fade-out. */
-function Positioned({
-  cx,
-  cy,
-  width,
-  opacity,
-  children,
-}: {
-  cx: number;
-  cy: number;
-  width: number;
-  opacity?: MotionValue<number>;
-  children: ReactNode;
-}) {
-  const positionStyle = {
-    left: `${(cx / CANVAS.width) * 100}%`,
-    top: `${(cy / CANVAS.height) * 100}%`,
-    width: `${(width / CANVAS.width) * 100}%`,
-    transform: "translate(-50%, -50%)",
-  };
-
-  if (opacity) {
-    return (
-      <motion.div className="absolute" style={{ ...positionStyle, opacity }}>
-        {children}
-      </motion.div>
-    );
-  }
-  return (
-    <div className="absolute" style={positionStyle}>
-      {children}
-    </div>
-  );
-}
-
-function CloudDecoration({
-  file,
-  style,
-  mirror,
-}: {
-  file: string;
-  style: { top: string; left?: string; right?: string; width: string };
-  mirror?: boolean;
-}) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={`${ASSET}/${file}`}
-      alt=""
-      className="absolute opacity-80"
-      style={{ ...style, transform: mirror ? "scaleX(-1)" : undefined }}
-    />
-  );
-}
-
-function ScrollProgressHint({ progress }: { progress: MotionValue<number> }) {
-  const barHeight = useTransform(progress, [0, 1], ["4%", "100%"]);
-  return (
-    <div className="pointer-events-none absolute bottom-8 right-6 z-50 hidden h-24 w-[3px] overflow-hidden rounded-full bg-white/25 mix-blend-difference sm:block">
-      <motion.div className="w-full rounded-full bg-white" style={{ height: barHeight }} />
-    </div>
-  );
-}
-
-function SongketDivider({ flipped = false }: { flipped?: boolean }) {
-  return (
-    <div className="relative h-10 w-full overflow-hidden bg-theme-bg sm:h-14">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={`${ASSET}/songket-divider-bottom.webp`}
-        alt=""
-        className="h-full w-full object-cover"
-        style={flipped ? { transform: "scaleY(-1)" } : undefined}
-      />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Konten kartu "murni" (tanpa positioning/opacity) — dipakai DI DALAM mural
-// lewat <Positioned>, dan dipakai lagi apa adanya di fallback statis lewat
-// <div> biasa. Supaya isinya konsisten di kedua mode tanpa duplikasi.
-// ---------------------------------------------------------------------------
-
-function OpeningCardContent({ openingMessage }: { openingMessage: { eyebrow?: string; body: string } }) {
-  return (
-    <div className="rounded-2xl bg-theme-surface/95 px-6 py-5 text-center shadow-floating backdrop-blur-sm">
-      {openingMessage.eyebrow ? (
-        <p className="mb-2 font-theme-body text-[11px] uppercase tracking-[0.3em] text-theme-muted">{openingMessage.eyebrow}</p>
-      ) : null}
-      <p className="font-theme-body text-sm leading-relaxed text-theme-text">{openingMessage.body}</p>
-    </div>
-  );
-}
-
-function PersonInfoCard({ person, roleLabel }: { person: InfiniteZoomPersonProfile; roleLabel: string }) {
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-2xl bg-theme-surface/95 px-4 py-5 text-center shadow-floating backdrop-blur-sm">
-      <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-theme-secondary">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
-      </div>
-      <p className="font-theme-body text-[10px] uppercase tracking-[0.25em] text-theme-secondary">{roleLabel}</p>
-      <p className="font-theme-heading text-lg text-theme-primary">{person.name}</p>
-      <p className="font-theme-body text-xs text-theme-muted">{person.parents}</p>
-    </div>
-  );
-}
-
-function CountdownCardContent({ target }: { target: string | Date }) {
-  const remaining = useCountdown(target);
-  return (
-    <div className="rounded-2xl bg-theme-surface/95 px-4 py-4 text-center shadow-floating backdrop-blur-sm">
-      <p className="mb-2 font-theme-body text-[11px] uppercase tracking-[0.25em] text-theme-muted">Menuju Hari Bahagia</p>
-      <div className="grid grid-cols-4 gap-2">
-        {[
-          { label: "Hari", value: remaining.d },
-          { label: "Jam", value: remaining.h },
-          { label: "Menit", value: remaining.m },
-          { label: "Detik", value: remaining.s },
-        ].map((u) => (
-          <div key={u.label} className="rounded-lg border border-theme-border py-2">
-            <p className="font-theme-heading text-lg text-theme-primary">{u.value}</p>
-            <p className="font-theme-body text-[9px] uppercase tracking-[0.15em] text-theme-muted">{u.label}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function EventCardContent({ event }: { event: InfiniteZoomEventDetail }) {
-  return (
-    <div className="rounded-2xl bg-theme-surface/95 px-5 py-5 text-center shadow-floating backdrop-blur-sm">
-      <p className="font-theme-body text-xs uppercase tracking-[0.3em] text-theme-secondary">{event.label}</p>
-      {event.dateLabel ? <p className="mt-2 font-theme-heading text-lg text-theme-primary">{event.dateLabel}</p> : null}
-      <p className="mt-1 font-theme-body text-sm text-theme-text">{event.timeLabel}</p>
-      {event.venueName ? <p className="mt-3 font-theme-body text-sm text-theme-muted">{event.venueName}</p> : null}
-      {event.address ? <p className="font-theme-body text-xs text-theme-muted">{event.address}</p> : null}
-      {event.mapsUrl ? (
-        <a
-          href={event.mapsUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-4 inline-block rounded-md bg-theme-primary px-5 py-2 font-theme-body text-xs font-medium text-white shadow-soft"
-        >
-          Lihat Lokasi
-        </a>
-      ) : null}
-    </div>
-  );
-}
-
-function LoveStoryCardContent({ chapter }: { chapter?: InfiniteZoomLoveStoryChapter }) {
-  if (!chapter) return null;
-  return (
-    <div className="rounded-2xl bg-theme-surface/95 px-5 py-5 text-center shadow-floating backdrop-blur-sm">
-      {chapter.year ? <p className="font-theme-body text-xs uppercase tracking-[0.3em] text-theme-secondary">{chapter.year}</p> : null}
-      <p className="mt-1 font-theme-heading text-lg text-theme-primary">{chapter.title}</p>
-      <p className="mt-1 font-theme-body text-sm text-theme-muted">{chapter.body}</p>
-    </div>
-  );
-}
-
-function GalleryCardContent({ photos, coupleNames }: { photos: string[]; coupleNames: string }) {
-  const shown = photos.slice(0, 4);
-  return (
-    <div className="relative rounded-xl bg-[#3E2A1B] p-3 shadow-floating">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`${ASSET}/flower-01.webp`} alt="" className="pointer-events-none absolute -left-6 -top-6 w-20" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`${ASSET}/flower-02.webp`} alt="" className="pointer-events-none absolute -right-6 -top-4 w-16" />
-      <div className="grid grid-cols-2 gap-1.5">
-        {shown.map((src, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={i} src={src} alt="" className="aspect-square w-full rounded-md object-cover" />
-        ))}
-      </div>
-      <p className="mt-2 text-center font-theme-heading text-sm text-[#FFFDF8]">Galeri Kami</p>
-      <p className="text-center font-theme-body text-[10px] uppercase tracking-[0.25em] text-[#EEDFBE]/80">{coupleNames}</p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Section standar setelah mural — RSVP, digital gift, ucapan, footer.
-// ---------------------------------------------------------------------------
-
-function SectionTexture({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <section className={`relative overflow-hidden bg-theme-bg ${className}`}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`${ASSET}/songket-pattern.webp`} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.04]" />
-      <div className="relative">{children}</div>
-    </section>
-  );
-}
-
-function RsvpSection({
-  guestName,
-  onSubmitRsvp,
-}: {
-  guestName?: string;
-  onSubmitRsvp?: (formData: FormData) => void;
-}) {
-  return (
-    <SectionTexture className="px-6 py-16">
-      <h2 className="text-center font-theme-heading text-2xl text-theme-primary">Konfirmasi Kehadiran</h2>
-      <form
-        action={onSubmitRsvp}
-        onSubmit={onSubmitRsvp ? undefined : (e) => e.preventDefault()}
-        className="mx-auto mt-6 max-w-md space-y-4 rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-floating"
-      >
-        <div>
-          <label className="mb-1 block font-theme-body text-sm font-medium text-theme-text">Nama</label>
-          <input
-            name="name"
-            required
-            defaultValue={guestName}
-            placeholder="Nama Anda"
-            className="w-full rounded-md border border-theme-border bg-theme-surface px-3 py-2 font-theme-body text-sm text-theme-text placeholder:text-theme-muted focus:border-theme-primary focus:outline-none focus:ring-1 focus:ring-theme-primary"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block font-theme-body text-sm font-medium text-theme-text">Nomor WhatsApp</label>
-          <input
-            name="whatsapp"
-            required
-            placeholder="0812xxxxxxxx"
-            className="w-full rounded-md border border-theme-border bg-theme-surface px-3 py-2 font-theme-body text-sm text-theme-text placeholder:text-theme-muted focus:border-theme-primary focus:outline-none focus:ring-1 focus:ring-theme-primary"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block font-theme-body text-sm font-medium text-theme-text">Kehadiran</label>
-          <select
-            name="status"
-            required
-            className="w-full rounded-md border border-theme-border bg-theme-surface px-3 py-2 font-theme-body text-sm text-theme-text focus:border-theme-primary focus:outline-none"
-          >
-            <option value="AKAN_HADIR">Akan Hadir</option>
-            <option value="TIDAK_HADIR">Tidak Hadir</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block font-theme-body text-sm font-medium text-theme-text">Jumlah Pendamping</label>
-          <input
-            name="companions"
-            type="number"
-            min={0}
-            defaultValue={0}
-            className="w-full rounded-md border border-theme-border bg-theme-surface px-3 py-2 font-theme-body text-sm text-theme-text focus:border-theme-primary focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block font-theme-body text-sm font-medium text-theme-text">Ucapan &amp; Doa</label>
-          <textarea
-            name="wishMessage"
-            rows={3}
-            placeholder="Selamat menempuh hidup baru..."
-            className="w-full rounded-md border border-theme-border bg-theme-surface px-3 py-2 font-theme-body text-sm text-theme-text placeholder:text-theme-muted focus:border-theme-primary focus:outline-none"
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full rounded-md bg-theme-primary px-4 py-2 font-theme-body text-sm font-medium text-white shadow-soft hover:bg-theme-primary-dark"
-        >
-          Kirim Konfirmasi
-        </button>
-      </form>
-    </SectionTexture>
-  );
-}
-
-function DigitalGiftSection({ gift }: { gift: { message?: string; accounts?: InfiniteZoomGiftAccount[]; qrisImageUrl?: string } }) {
-  const accounts = gift.accounts || [];
-  return (
-    <SectionTexture className="px-6 py-16 text-center">
-      <h2 className="font-theme-heading text-2xl text-theme-primary">Tanda Kasih</h2>
-      <p className="mx-auto mt-4 max-w-sm font-theme-body text-sm text-theme-muted">
-        {gift.message || "Kehadiran dan doa restu Anda sudah menjadi hadiah yang sangat berarti bagi kami."}
-      </p>
-      {gift.qrisImageUrl ? (
-        <div className="mt-6">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={gift.qrisImageUrl} alt="QRIS" className="mx-auto h-48 w-48 rounded-md object-contain shadow-soft" />
-        </div>
-      ) : null}
-      {accounts.length > 0 ? (
-        <div className="mx-auto mt-6 max-w-sm space-y-3 text-left">
-          {accounts.map((a, i) => (
-            <div key={i} className="rounded-xl border border-theme-border bg-theme-surface p-4 shadow-soft">
-              <p className="font-theme-body text-sm font-semibold text-theme-primary">{a.bank}</p>
-              <p className="mt-1 font-mono text-sm text-theme-text">{a.number}</p>
-              {a.holder ? <p className="font-theme-body text-xs text-theme-muted">a.n. {a.holder}</p> : null}
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </SectionTexture>
-  );
-}
-
-function WishesSection() {
-  return (
-    <SectionTexture className="px-6 py-16 text-center">
-      <h2 className="font-theme-heading text-2xl text-theme-primary">Ucapan &amp; Doa</h2>
-      <p className="mx-auto mt-4 max-w-sm font-theme-body text-sm text-theme-muted">
-        Ucapan dari tamu akan tampil di sini setelah undangan dipublikasikan.
-      </p>
-    </SectionTexture>
-  );
-}
-
-function FooterSection({ footer }: { footer: { coupleNames: string; dateLabel?: string; message?: string } }) {
-  return (
-    <section className="relative flex min-h-[70vh] flex-col items-center justify-center gap-4 bg-theme-bg px-6 py-24 text-center">
-      <p className="font-theme-body text-xs uppercase tracking-[0.3em] text-theme-muted">Dengan penuh syukur</p>
-      <h2 className="font-theme-heading text-4xl text-theme-primary sm:text-5xl">{footer.coupleNames}</h2>
-      {footer.dateLabel ? <p className="font-theme-body text-theme-muted">{footer.dateLabel}</p> : null}
-      {footer.message ? <p className="max-w-md font-theme-body text-theme-text">{footer.message}</p> : null}
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Fallback non-animasi untuk `prefers-reduced-motion` — cover statis (tanpa
-// depth-layer/scroll-jacking sama sekali, cukup gambar biasa ditumpuk) lalu
-// semua konten yang tadinya "tersembunyi" di waypoint kamera ditampilkan
-// berurutan sebagai stack section biasa, pakai komponen konten "murni" yang
-// sama supaya isinya tetap konsisten dengan mode animasi.
-// ---------------------------------------------------------------------------
-
-function StaticMuralSnapshot({
-  couplePhotoUrl,
-  guestName,
-  coupleNames,
-  coverEyebrow = "The Wedding of",
-  coverDateLabel,
-}: {
-  couplePhotoUrl: string;
-  guestName?: string;
-  coupleNames: string;
-  coverEyebrow?: string;
-  coverDateLabel?: string;
-}) {
-  return (
-    <div className="relative h-full w-full overflow-hidden bg-[#EFE7D2]">
-      {/* eslint-disable @next/next/no-img-element */}
-      <img src={`${ASSET}/sky.webp`} alt="" className="absolute inset-0 h-full w-full object-cover" />
-      <img src={`${ASSET}/gunung-kerinci.webp`} alt="" className="absolute bottom-0 left-0 w-full" />
-      <img src={`${ASSET}/rumah-gadang-hero.webp`} alt="" className="absolute bottom-0 left-[7.5%] w-[85%]" />
-      <img src={couplePhotoUrl} alt="" className="absolute bottom-0 left-1/2 w-[46%] -translate-x-1/2" />
-      <img src={`${ASSET}/pohon-01.webp`} alt="" className="absolute bottom-0 left-[-3%] w-[24%]" />
-      <img src={`${ASSET}/pohon-02.webp`} alt="" className="absolute bottom-0 right-[-3%] w-[26%]" />
-      <img src={`${ASSET}/top-ornament.webp`} alt="" className="absolute top-0 left-0 w-full" />
-      {/* eslint-enable @next/next/no-img-element */}
-
-      <div className="absolute top-[7%] w-full text-center">
-        <p className="font-theme-body text-[11px] uppercase tracking-[0.4em] text-[#EEDFBE]/90">{coverEyebrow}</p>
-      </div>
-      <div className="absolute top-[52%] w-full text-center">
-        <h1 className="font-theme-heading text-2xl text-[#FFFDF8]" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
-          {coupleNames}
-        </h1>
-        {coverDateLabel ? <p className="mt-1 font-theme-body text-xs text-[#EEDFBE]/85">{coverDateLabel}</p> : null}
-        {guestName ? (
-          <p className="mt-2 inline-block rounded-full bg-black/25 px-4 py-1 font-theme-body text-xs text-[#FFFDF8] backdrop-blur-sm">
-            Kepada Yth. {guestName}
-          </p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function StaticFallback(props: InfiniteZoomInvitationProps) {
-  const {
-    guestName,
-    coupleNames,
-    coverEyebrow = "The Wedding of",
-    coverDateLabel,
-    couplePhotoUrl,
-    openingMessage,
-    bride,
-    groom,
-    events,
-    countdownTarget,
-    loveStory = [],
-    gallery = [],
-  } = props;
-
-  return (
-    <div className="bg-theme-bg">
-      <div className="relative aspect-[10/18] w-full max-w-sm mx-auto overflow-hidden">
-        <StaticMuralSnapshot
-          couplePhotoUrl={couplePhotoUrl}
-          guestName={guestName}
-          coupleNames={coupleNames}
-          coverEyebrow={coverEyebrow}
-          coverDateLabel={coverDateLabel}
-        />
-      </div>
-
-      <SongketDivider />
-
-      <SectionTexture className="px-6 py-12">
-        <div className="mx-auto max-w-md">
-          <OpeningCardContent openingMessage={openingMessage} />
-        </div>
-      </SectionTexture>
-
-      <SectionTexture className="px-6 py-12">
-        <h2 className="text-center font-theme-heading text-2xl text-theme-primary">Mempelai</h2>
-        <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-4">
-          <PersonInfoCard person={bride} roleLabel="Mempelai Wanita" />
-          <PersonInfoCard person={groom} roleLabel="Mempelai Pria" />
-        </div>
-      </SectionTexture>
-
-      {countdownTarget ? (
-        <SectionTexture className="px-6 py-12">
-          <div className="mx-auto max-w-xs">
-            <CountdownCardContent target={countdownTarget} />
-          </div>
-        </SectionTexture>
-      ) : null}
-
-      {events.length > 0 ? (
-        <SectionTexture className="px-6 py-12">
-          <h2 className="text-center font-theme-heading text-2xl text-theme-primary">Rangkaian Acara</h2>
-          <div className="mx-auto mt-6 grid max-w-2xl gap-4 sm:grid-cols-2">
-            {events.map((ev) => (
-              <EventCardContent key={ev.id} event={ev} />
-            ))}
-          </div>
-        </SectionTexture>
-      ) : null}
-
-      {loveStory.length > 0 ? (
-        <SectionTexture className="px-6 py-12">
-          <h2 className="text-center font-theme-heading text-2xl text-theme-primary">Kisah Kami</h2>
-          <div className="mx-auto mt-6 max-w-md space-y-4">
-            {loveStory.map((chapter, i) => (
-              <LoveStoryCardContent key={i} chapter={chapter} />
-            ))}
-          </div>
-        </SectionTexture>
-      ) : null}
-
-      {gallery.length > 0 ? (
-        <SectionTexture className="px-6 py-12">
-          <div className="mx-auto max-w-sm">
-            <GalleryCardContent photos={gallery} coupleNames={coupleNames} />
-          </div>
-        </SectionTexture>
-      ) : null}
-
-      <SongketDivider />
-
-      <RsvpSection guestName={guestName} onSubmitRsvp={props.onSubmitRsvp} />
-      {props.digitalGift ? <DigitalGiftSection gift={props.digitalGift} /> : null}
-      <WishesSection />
-      <SongketDivider flipped />
-      <FooterSection footer={props.footer} />
-    </div>
-  );
-}
+          <img src={`${ASSET}/top-ornament.w
