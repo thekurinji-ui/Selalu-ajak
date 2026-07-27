@@ -5,6 +5,7 @@ import {
   motion,
   useScroll,
   useTransform,
+  useSpring,
   useReducedMotion,
   type MotionValue,
 } from "framer-motion";
@@ -219,9 +220,22 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
   const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start start", "end end"] });
 
   const breakpoints = waypoints.map((_, i) => i / (n - 1));
-  const cxMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.cx));
-  const cyMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.cy));
-  const zoomMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.zoom * coverScale));
+  const cxRaw = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.cx));
+  const cyRaw = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.cy));
+  const zoomRaw = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.zoom * coverScale));
+
+  // PERF/FEEL FIX: cxRaw/cyRaw/zoomRaw di atas itu interpolasi LINEAR per
+  // segmen antar-waypoint — posisinya nyambung, tapi KECEPATANNYA berubah
+  // tiba-tiba setiap kali lewat satu waypoint (itu penyebab "patah-patah"
+  // yang dirasain). useSpring di sini bikin kamera punya sedikit inersia/
+  // redaman, jadi perubahan kecepatan itu diperhalus jadi transisi yang
+  // terasa nyambung terus, bukan nyentak. Kalau kamera kerasa terlalu
+  // "ngambang"/telat nyampe di waypoint, naikkan `stiffness` atau turunkan
+  // `damping`; kalau masih kerasa nyentak, kebalikannya.
+  const springConfig = { stiffness: 260, damping: 34, mass: 0.6 };
+  const cxMV = useSpring(cxRaw, springConfig);
+  const cyMV = useSpring(cyRaw, springConfig);
+  const zoomMV = useSpring(zoomRaw, springConfig);
 
   const seg = 1 / (n - 1);
   const coverTextOpacity = useTransform(scrollYProgress, [0, seg * 0.4, 1 - seg * 0.4, 1], [1, 0, 0, 1]);
@@ -229,7 +243,7 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
   return (
     <div className="relative bg-theme-bg">
       <div ref={containerRef} className="relative" style={{ height: `${n * 90}vh` }}>
-        <div className="sticky top-0 h-[100dvh] w-full overflow-hidden bg-[#EFE7D2]">
+        <div className="sticky top-0 h-[100dvh] w-full overflow-hidden bg-[#EFE7D2]" style={{ contain: "layout paint" }}>
           <MinangMuralScene
             {...props}
             waypoints={waypoints}
@@ -289,7 +303,23 @@ function DepthLayer({
   return (
     <motion.div
       className="absolute left-0 top-0"
-      style={{ width: CANVAS.width, height: CANVAS.height, x, y, scale, transformOrigin: "0 0", zIndex }}
+      style={{
+        width: CANVAS.width,
+        height: CANVAS.height,
+        x,
+        y,
+        scale,
+        transformOrigin: "0 0",
+        zIndex,
+        // PERF: paksa tiap layer jadi compositing layer GPU sendiri, biar
+        // browser cukup nge-scale bitmap yang udah ada (murah) daripada
+        // nge-render ulang isi layer tiap frame scroll (mahal, penyebab
+        // paling umum dari scroll yang "patah-patah" di setup depth-layer
+        // kayak gini).
+        willChange: "transform",
+        backfaceVisibility: "hidden",
+        contain: "layout paint size",
+      }}
     >
       {children}
     </motion.div>
