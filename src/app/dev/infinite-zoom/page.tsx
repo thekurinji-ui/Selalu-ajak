@@ -1,3 +1,5 @@
+"use client";
+
 import { InfiniteZoomInvitation } from "@/components/invitation/InfiniteZoomInvitation";
 import { ThemeProvider } from "@/components/invitation/ThemeProvider";
 
