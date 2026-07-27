@@ -11,60 +11,21 @@ import {
 
 // ---------------------------------------------------------------------------
 // InfiniteZoomInvitation — REVISI v3 "Mural Berlapis (Depth Parallax)"
+// + 2 bug fix (lihat FIX #1 dan FIX #2 di bawah)
+// ---------------------------------------------------------------------------
 //
-// Dua perbaikan dari revisi sebelumnya:
+// FIX #1 (kritis): `ZOOM_BASE` dipakai di `useDepthTransform` tapi di versi
+// sebelumnya nggak pernah didefinisikan → ReferenceError pas mural render.
+// Sekarang didefinisikan eksplisit, disamakan dengan `COVER`, supaya di
+// waypoint "cover"/"cover-out" semua depth-layer presisi menyatu.
 //
-// 1) FADE IN/OUT PER SECTION
-//    Setiap kartu konten (pesan pembuka, info mempelai, countdown, detail
-//    acara, kisah cinta, galeri) sekarang TERSEMBUNYI (opacity 0) selama
-//    kamera belum sampai di waypoint-nya, MUNCUL (opacity 1) tepat saat
-//    kamera berhenti di waypoint itu, lalu MENGHILANG lagi begitu kamera
-//    lanjut ke waypoint berikutnya. Kurva opacity-nya segitiga (0→1→0)
-//    dipatok ke breakpoint scroll milik masing-masing kartu — lihat
-//    `useSectionOpacity`.
-//
-// 2) LAYER 3D BERLAPIS (DEPTH PARALLAX)
-//    Mural sekarang bukan satu kanvas datar, tapi ~9 "lapisan kedalaman"
-//    (langit → awan → gunung → [di belakang] → rumah gadang → [konten
-//    tengah] → foto mempelai → galeri → pohon depan), MASING-MASING punya
-//    kecepatan zoom sendiri relatif terhadap titik referensi (lihat
-//    `DEPTH` & `useDepthTransform`). Lapisan yang "jauh" (langit, gunung,
-//    awan) zoom & bergeser LEBIH LAMBAT; lapisan yang "dekat" (foto
-//    mempelai, pohon depan) zoom & bergeser LEBIH CEPAT — itu yang bikin
-//    efek "berlapis-lapis, 3D" pas scroll.
-//    Countdown SENGAJA ditaruh di lapisan "behind" (lebih jauh dari
-//    referensi) dan digambar SEBELUM lapisan foto mempelai di DOM, jadi
-//    foto mempelai (PNG transparan) betul-betul menutupinya dari depan —
-//    kartu countdown hanya "mengintip" dari sela-sela transparan sekitar
-//    siluet mempelai, persis kayak dia ada di belakang mereka.
-//
-// Semua lapisan tetap dianchor ke titik zoom yang SAMA (ZOOM_BASE = zoom
-// waypoint "cover") supaya di framing cover semua lapisan tetap presisi
-// menyatu jadi satu gambar utuh — parallax-nya baru "terasa" begitu kamera
-// mulai zoom masuk, dan balik menyatu lagi begitu zoom out ke cover-out.
-//
-// STATUS: masih standalone, belum disambung ke SectionRenderer/template
-// system. Cek halaman tes di src/app/dev/infinite-zoom/page.tsx.
-//
-// CATATAN JUJUR:
-// - Komposisi ground layer mengikuti referensi: pohon dibuat LEBIH KECIL
-//   (18-19% lebar, bukan ~25%) dan jadi backdrop selapis dengan gunung
-//   (DEPTH.treesBg, di BELAKANG rumah gadang & foto) — bukan pohon besar
-//   di paling depan seperti revisi sebelumnya. Foto mempelai juga
-//   diperkecil (38% lebar) biar proporsional dengan rumah gadang. Ada
-//   list songket tipis tambahan di dasar mural (dekat kaki mempelai)
-//   sebagai pasangan top-ornament di atas.
-// - Depth exponent per lapisan (lihat `DEPTH`) dikalibrasi rasa/visual,
-//   bukan hasil pengukuran fisik. Kalau efek parallax-nya kurang/kelewat
-//   kerasa di satu lapisan tertentu, cukup naik/turunkan angkanya sedikit
-//   (semakin jauh dari 1.0, semakin terasa "jauh"/"dekat" lapisan itu).
-// - Fade opacity dipatok segitiga PAS di breakpoint waypoint kartu itu.
-//   Kalau mau durasi "muncul penuh"-nya lebih lama (bukan sekejap), tinggal
-//   ganti array input `useTransform` di `useSectionOpacity` dari 3 titik
-//   jadi 4-5 titik dengan sedikit plateau di tengah.
-// - Asumsi kiri=mempelai wanita, kanan=mempelai pria di foto hero. Kartu
-//   akad sengaja digeser ke sisi kanan rumah (bukan tepat di atas foto)
-//   supaya tidak ketutup lapisan foto saat kamera zoom out lebar.
+// FIX #2: form RSVP sebelumnya pakai `<form action={onSubmitRsvp}>` — pola
+// "form actions" yang baru resmi didukung React 19. Project ini masih
+// React 18.3.1 (cek package.json), jadi `action` di situ cuma dibaca
+// sebagai string URL biasa dan function-nya nggak akan ke-panggil (form
+// malah bisa ke-submit native / reload halaman). Diganti balik ke
+// `onSubmit` manual yang bikin `FormData` dari `e.currentTarget` — jalan
+// di React 18 maupun 19.
 // ---------------------------------------------------------------------------
 
 const ASSET = "/templates/luxury-parallax-minang";
@@ -74,11 +35,14 @@ const CANVAS = { width: 1000, height: 1800 };
 
 // Multiplier zoom relatif terhadap "cover scale" (lihat useViewportCoverScale
 // di bawah). 1.0 = persis framing cover (mural full-bleed nutup layar tanpa
-// sisa kosong). Angka lain hasil bagi nilai zoom lama (yang dulu absolut,
-// dikalibrasi ke layar ~420px) dengan 0.42, supaya rasio zoom-nya SAMA
-// persis seperti sebelumnya, cuma sekarang responsive ke ukuran layar apa
-// pun — bukan angka pixel tetap lagi.
+// sisa kosong).
 const COVER = 1.0;
+
+// FIX #1: referensi kedalaman dipakai di useDepthTransform. Disamakan
+// dengan COVER supaya di waypoint "cover"/"cover-out" (di mana zoomMV =
+// COVER * coverScale) semua depth-layer menghasilkan layerZoom yang sama
+// persis — mural jadi satu gambar utuh, tidak "pecah" antar-layer.
+const ZOOM_BASE = COVER;
 
 // Eksponen kedalaman per lapisan. 1.0 = lapisan referensi (rumah gadang).
 // <1 = lebih "jauh" dari kamera (zoom & geser lebih lambat).
@@ -156,9 +120,9 @@ export interface InfiniteZoomPersonProfile {
 
 export interface InfiniteZoomEventDetail {
   id: string;
-  label: string; // "Akad Nikah"
-  dateLabel?: string; // "Sabtu, 12 Desember 2026"
-  timeLabel: string; // "08.00 - 10.00 WIB"
+  label: string;
+  dateLabel?: string;
+  timeLabel: string;
   venueName?: string;
   address?: string;
   mapsUrl?: string;
@@ -177,39 +141,25 @@ export interface InfiniteZoomGiftAccount {
 }
 
 export interface InfiniteZoomInvitationProps {
-  /** Nama tamu — tampil di cover (waypoint pertama & terakhir). */
   guestName?: string;
-  /** "Ayu & Bagas" — dipakai di cover & footer. */
   coupleNames: string;
   coverEyebrow?: string;
   coverDateLabel?: string;
-  /** Foto mempelai (PNG/WEBP transparan) yang berdiri di depan rumah gadang. */
   couplePhotoUrl: string;
-
   openingMessage: { eyebrow?: string; body: string };
-
-  /** Asumsi: sisi kiri foto = mempelai wanita, sisi kanan = mempelai pria. */
   bride: InfiniteZoomPersonProfile;
   groom: InfiniteZoomPersonProfile;
-
-  /** events[0] dipakai untuk kartu "zoom out agak jauh", events[1] untuk kartu di awan. Sisanya opsional, hanya tampil di fallback statis. */
   events: InfiniteZoomEventDetail[];
   countdownTarget?: string | Date;
-
-  /** Satu bab = satu awan. Maksimal 4 bab yang dapat kebagian awan sendiri. */
   loveStory?: InfiniteZoomLoveStoryChapter[];
-
   gallery?: string[];
-
   digitalGift?: { message?: string; accounts?: InfiniteZoomGiftAccount[]; qrisImageUrl?: string };
-
   footer: { coupleNames: string; dateLabel?: string; message?: string };
-
   onSubmitRsvp?: (formData: FormData) => void;
 }
 
 // ---------------------------------------------------------------------------
-// Hook kecil: countdown, dipakai di dalam mural & di fallback statis.
+// Hook kecil: countdown
 // ---------------------------------------------------------------------------
 
 function useCountdown(target: string | Date) {
@@ -232,19 +182,6 @@ function useCountdown(target: string | Date) {
   return remaining;
 }
 
-/**
- * Skala supaya CANVAS selalu menutup penuh viewport ("cover", bukan
- * "contain") — persis seperti object-fit:cover — apa pun ukuran/rasio
- * layarnya, jadi tidak ada bar/celah kosong di pinggir. Dihitung ulang
- * setiap resize.
- *
- * CATATAN JUJUR: di layar sangat lebar (desktop ultra-wide) ini berarti
- * framing "cover" jadi lebih zoom-in dan bagian atas/bawah mural terpotong
- * lebih banyak — trade-off yang tidak terhindarkan supaya tidak ada ruang
- * kosong sama sekali. Untuk pengalaman ini (undangan yang mayoritas dibuka
- * dari HP) itu proporsional; kalau nanti mau versi khusus desktop yang
- * "contain" (boleh ada letterbox), tinggal tambah breakpoint di sini.
- */
 function useViewportCoverScale() {
   const getScale = () => {
     if (typeof window === "undefined") return 1;
@@ -267,11 +204,7 @@ function useViewportCoverScale() {
 
 export function InfiniteZoomInvitation(props: InfiniteZoomInvitationProps) {
   const prefersReducedMotion = useReducedMotion();
-
-  if (prefersReducedMotion) {
-    return <StaticFallback {...props} />;
-  }
-
+  if (prefersReducedMotion) return <StaticFallback {...props} />;
   return <ZoomExperience {...props} />;
 }
 
@@ -283,27 +216,18 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
   const coverScale = useViewportCoverScale();
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
+  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start start", "end end"] });
 
   const breakpoints = waypoints.map((_, i) => i / (n - 1));
   const cxMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.cx));
   const cyMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.cy));
-  // Multiplier waypoint (COVER=1.0, dst.) dikalikan coverScale supaya kanvas
-  // selalu nutup penuh layar, apa pun ukurannya — lihat useViewportCoverScale.
   const zoomMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.zoom * coverScale));
 
-  // Teks cover (eyebrow, judul, nama tamu) hanya kelihatan jelas saat di
-  // waypoint "cover" & "cover-out" — cepat pudar begitu kamera mulai
-  // bergerak, dan muncul lagi menjelang kamera kembali ke framing awal.
   const seg = 1 / (n - 1);
   const coverTextOpacity = useTransform(scrollYProgress, [0, seg * 0.4, 1 - seg * 0.4, 1], [1, 0, 0, 1]);
 
   return (
     <div className="relative bg-theme-bg">
-      {/* --- Bagian 1: mural rumah gadang, scroll-jacked, n waypoint --- */}
       <div ref={containerRef} className="relative" style={{ height: `${n * 90}vh` }}>
         <div className="sticky top-0 h-[100dvh] w-full overflow-hidden bg-[#EFE7D2]">
           <MinangMuralScene
@@ -313,17 +237,13 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
             cxMV={cxMV}
             cyMV={cyMV}
             zoomMV={zoomMV}
-            coverScale={coverScale}
             coverTextOpacity={coverTextOpacity}
           />
           <ScrollProgressHint progress={scrollYProgress} />
         </div>
       </div>
 
-      {/* --- Bagian 2: divider Minang, penanda transisi ke scroll normal --- */}
       <SongketDivider />
-
-      {/* --- Bagian 3: RSVP, digital gift, ucapan — scroll normal --- */}
       <RsvpSection guestName={props.guestName} onSubmitRsvp={onSubmitRsvp} />
       {props.digitalGift ? <DigitalGiftSection gift={props.digitalGift} /> : null}
       <WishesSection />
@@ -334,10 +254,7 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Depth parallax — inti dari efek "3D berlapis". Setiap DepthLayer punya
-// kecepatan zoom/geser sendiri, relatif ke ZOOM_BASE, berdasarkan exponent
-// kedalamannya. Di ZOOM_BASE (waypoint cover), semua lapisan presisi sama
-// — parallax baru "muncul" begitu kamera zoom menyimpang dari ZOOM_BASE.
+// Depth parallax
 // ---------------------------------------------------------------------------
 
 function useDepthTransform(cxMV: MotionValue<number>, cyMV: MotionValue<number>, zoomMV: MotionValue<number>, depth: number) {
@@ -379,7 +296,6 @@ function DepthLayer({
   );
 }
 
-/** Opacity segitiga (0 → 1 → 0) yang mekar tepat di breakpoint waypoint `id`. */
 function useSectionOpacity(scrollYProgress: MotionValue<number>, waypoints: CameraWaypoint[], id: string) {
   const n = waypoints.length;
   const rawIndex = waypoints.findIndex((w) => w.id === id);
@@ -389,12 +305,6 @@ function useSectionOpacity(scrollYProgress: MotionValue<number>, waypoints: Came
   const next = index < n - 1 ? (index + 1) / (n - 1) : Math.min(1, bp + 0.001);
   return useTransform(scrollYProgress, [prev, bp, next], [0, 1, 0]);
 }
-
-// ---------------------------------------------------------------------------
-// Mural rumah gadang — dipecah jadi beberapa DepthLayer (lihat DEPTH),
-// disusun dari yang paling jauh ke paling dekat supaya urutan tumpang-
-// tindihnya benar (layer belakangan digambar di atas layer sebelumnya).
-// ---------------------------------------------------------------------------
 
 interface MuralCameraProps {
   waypoints: CameraWaypoint[];
@@ -445,8 +355,6 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
   const event0Opacity = useSectionOpacity(scrollYProgress, waypoints, "event-0");
   const event1Opacity = useSectionOpacity(scrollYProgress, waypoints, "event-1");
   const galleryOpacity = useSectionOpacity(scrollYProgress, waypoints, "gallery");
-  // Awan kisah cinta maksimal 4 — dipanggil tetap 4x (bukan di dalam .map)
-  // supaya jumlah pemanggilan hook selalu konsisten antar-render.
   const loveStoryOpacities = [
     useSectionOpacity(scrollYProgress, waypoints, "love-story-0"),
     useSectionOpacity(scrollYProgress, waypoints, "love-story-1"),
@@ -456,7 +364,6 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#EFE7D2]">
-      {/* --- Lapisan 1: langit — paling jauh, hampir diam --- */}
       {layer(
         DEPTH.sky,
         0,
@@ -464,7 +371,6 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
         <img src={`${ASSET}/sky.webp`} alt="" className="absolute inset-0 h-full w-full object-cover" />
       )}
 
-      {/* --- Lapisan 2: awan + kartu pesan pembuka, resepsi, kisah cinta --- */}
       {layer(
         DEPTH.clouds,
         10,
@@ -493,7 +399,6 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
         </>
       )}
 
-      {/* --- Lapisan 3: gunung — jauh, di belakang rumah gadang --- */}
       {layer(
         DEPTH.mountain,
         20,
@@ -501,7 +406,6 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
         <img src={`${ASSET}/gunung-kerinci.webp`} alt="" className="absolute bottom-0 left-0 w-full" />
       )}
 
-      {/* --- Lapisan 3b: pohon — backdrop kecil di kiri-kanan, selapis dengan gunung, DI BELAKANG rumah gadang & foto (bukan foreground) --- */}
       {layer(
         DEPTH.treesBg,
         25,
@@ -513,18 +417,16 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
         </>
       )}
 
-      {/* --- Lapisan 4: countdown — SENGAJA di lapisan lebih "jauh" dari foto mempelai, digambar SEBELUM lapisan foto supaya benar-benar tertutup dari depan --- */}
-      {countdownTarget ? (
-        layer(
-          DEPTH.behind,
-          30,
-          <Positioned cx={500} cy={1390} width={300} opacity={countdownOpacity}>
-            <CountdownCardContent target={countdownTarget} />
-          </Positioned>
-        )
-      ) : null}
+      {countdownTarget
+        ? layer(
+            DEPTH.behind,
+            30,
+            <Positioned cx={500} cy={1390} width={300} opacity={countdownOpacity}>
+              <CountdownCardContent target={countdownTarget} />
+            </Positioned>
+          )
+        : null}
 
-      {/* --- Lapisan 5: rumah gadang + teks cover + kartu akad --- */}
       {layer(
         DEPTH.house,
         40,
@@ -534,7 +436,6 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`${ASSET}/top-ornament.webp`} alt="" className="absolute top-0 left-0 w-full" />
 
-          {/* List songket tipis di dasar mural, dekat kaki mempelai — pasangan dari top-ornament di atas */}
           <div className="absolute bottom-0 left-0 h-[3.5%] w-full overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`${ASSET}/songket-divider-bottom.webp`} alt="" className="h-full w-full object-cover object-bottom" />
@@ -563,7 +464,6 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
         </>
       )}
 
-      {/* --- Lapisan 6: info mempelai — melayang sedikit di depan dinding rumah --- */}
       {layer(
         DEPTH.midContent,
         50,
@@ -577,7 +477,6 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
         </>
       )}
 
-      {/* --- Lapisan 7: foto mempelai — PNG transparan, tanpa frame, berdiri di depan rumah gadang --- */}
       {layer(
         DEPTH.photo,
         60,
@@ -596,7 +495,6 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
         </>
       )}
 
-      {/* --- Lapisan 8: galeri foto — depan rumah gadang, agak nyamping --- */}
       {gallery.length > 0
         ? layer(
             DEPTH.gallery,
@@ -606,12 +504,10 @@ function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps)
             </Positioned>
           )
         : null}
-
     </div>
   );
 }
 
-/** Elemen konten yang dipatok di titik (cx, cy) kanvas, center-anchored. Opacity opsional untuk efek fade-in/fade-out. */
 function Positioned({
   cx,
   cy,
@@ -688,12 +584,6 @@ function SongketDivider({ flipped = false }: { flipped?: boolean }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Konten kartu "murni" (tanpa positioning/opacity) — dipakai DI DALAM mural
-// lewat <Positioned>, dan dipakai lagi apa adanya di fallback statis lewat
-// <div> biasa. Supaya isinya konsisten di kedua mode tanpa duplikasi.
-// ---------------------------------------------------------------------------
 
 function OpeningCardContent({ openingMessage }: { openingMessage: { eyebrow?: string; body: string } }) {
   return (
@@ -795,10 +685,6 @@ function GalleryCardContent({ photos, coupleNames }: { photos: string[]; coupleN
   );
 }
 
-// ---------------------------------------------------------------------------
-// Section standar setelah mural — RSVP, digital gift, ucapan, footer.
-// ---------------------------------------------------------------------------
-
 function SectionTexture({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <section className={`relative overflow-hidden bg-theme-bg ${className}`}>
@@ -820,8 +706,13 @@ function RsvpSection({
     <SectionTexture className="px-6 py-16">
       <h2 className="text-center font-theme-heading text-2xl text-theme-primary">Konfirmasi Kehadiran</h2>
       <form
-        action={onSubmitRsvp}
-        onSubmit={onSubmitRsvp ? undefined : (e) => e.preventDefault()}
+        onSubmit={(e) => {
+          // FIX #2: React 18 nggak dukung `action={function}` di <form> —
+          // itu fitur React 19. FormData dibikin manual dari
+          // e.currentTarget, jalan di React 18 maupun 19.
+          e.preventDefault();
+          if (onSubmitRsvp) onSubmitRsvp(new FormData(e.currentTarget));
+        }}
         className="mx-auto mt-6 max-w-md space-y-4 rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-floating"
       >
         <div>
@@ -934,14 +825,6 @@ function FooterSection({ footer }: { footer: { coupleNames: string; dateLabel?: 
     </section>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Fallback non-animasi untuk `prefers-reduced-motion` — cover statis (tanpa
-// depth-layer/scroll-jacking sama sekali, cukup gambar biasa ditumpuk) lalu
-// semua konten yang tadinya "tersembunyi" di waypoint kamera ditampilkan
-// berurutan sebagai stack section biasa, pakai komponen konten "murni" yang
-// sama supaya isinya tetap konsisten dengan mode animasi.
-// ---------------------------------------------------------------------------
 
 function StaticMuralSnapshot({
   couplePhotoUrl,
