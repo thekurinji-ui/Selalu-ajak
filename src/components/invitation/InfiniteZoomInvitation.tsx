@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, useEffect, type ReactNode } from "react";
 import {
   motion,
   useScroll,
@@ -10,61 +10,79 @@ import {
 } from "framer-motion";
 
 // ---------------------------------------------------------------------------
-// InfiniteZoomInvitation — REVISI v2 "Satu Mural Rumah Gadang"
+// InfiniteZoomInvitation — REVISI v3 "Mural Berlapis (Depth Parallax)"
 //
-// SATU scene besar (mural) berisi aset `luxury-parallax-minang`
-// (sky, cloud x4, gunung-kerinci, pohon, rumah-gadang-hero) + foto hero
-// (PNG/WEBP transparan, TANPA frame lingkaran — dia berdiri "di depan"
-// rumah gadang secara alami karena latarnya transparan). Kamera (scroll)
-// berpindah dari satu titik ke titik lain DI DALAM mural yang sama:
+// Dua perbaikan dari revisi sebelumnya:
 //
-//   1.  cover              → mural penuh, nama tamu & judul tampil
-//   2.  opening             → geser ke awan atas, kartu pesan pembuka
-//   3.  hero-photo            → zoom ke foto mempelai berdiri depan rumah gadang
-//   4.  bride-focus            → zoom ke sisi mempelai wanita di foto
-//   5.  bride-info              → geser sedikit lagi ke samping, kartu nama & ortu
-//   6.  mid-breather             → zoom out sedikit (jeda sebelum ke mempelai pria)
-//   7.  groom-focus               → zoom ke sisi mempelai pria di foto
-//   8.  groom-info                 → geser sedikit ke samping, kartu nama & ortu
-//   9.  countdown                   → zoom ke "belakang" mempelai, kartu hitung mundur
-//   10. event-akad                    → zoom out agak jauh, kartu detail akad
-//   11. event-resepsi                   → pindah ke awan lain, kartu detail resepsi
-//   12+ love-story-N                      → satu bab kisah cinta per awan (dinamis)
-//   N-1 gallery                             → turun depan rumah gadang, agak nyamping, galeri foto
-//   N   cover-out                             → zoom out penuh, balik persis seperti cover
+// 1) FADE IN/OUT PER SECTION
+//    Setiap kartu konten (pesan pembuka, info mempelai, countdown, detail
+//    acara, kisah cinta, galeri) sekarang TERSEMBUNYI (opacity 0) selama
+//    kamera belum sampai di waypoint-nya, MUNCUL (opacity 1) tepat saat
+//    kamera berhenti di waypoint itu, lalu MENGHILANG lagi begitu kamera
+//    lanjut ke waypoint berikutnya. Kurva opacity-nya segitiga (0→1→0)
+//    dipatok ke breakpoint scroll milik masing-masing kartu — lihat
+//    `useSectionOpacity`.
 //
-// Setelah waypoint terakhir, halaman lanjut SCROLL NORMAL (bukan
-// scroll-jacking) langsung ke: RSVP, Digital Gift, Ucapan, lalu penutup.
-// Semua section lain (sapaan, kisah cinta, profil mempelai, detail acara,
-// countdown, galeri) sudah tercakup DI DALAM mural sesuai permintaan.
+// 2) LAYER 3D BERLAPIS (DEPTH PARALLAX)
+//    Mural sekarang bukan satu kanvas datar, tapi ~9 "lapisan kedalaman"
+//    (langit → awan → gunung → [di belakang] → rumah gadang → [konten
+//    tengah] → foto mempelai → galeri → pohon depan), MASING-MASING punya
+//    kecepatan zoom sendiri relatif terhadap titik referensi (lihat
+//    `DEPTH` & `useDepthTransform`). Lapisan yang "jauh" (langit, gunung,
+//    awan) zoom & bergeser LEBIH LAMBAT; lapisan yang "dekat" (foto
+//    mempelai, pohon depan) zoom & bergeser LEBIH CEPAT — itu yang bikin
+//    efek "berlapis-lapis, 3D" pas scroll.
+//    Countdown SENGAJA ditaruh di lapisan "behind" (lebih jauh dari
+//    referensi) dan digambar SEBELUM lapisan foto mempelai di DOM, jadi
+//    foto mempelai (PNG transparan) betul-betul menutupinya dari depan —
+//    kartu countdown hanya "mengintip" dari sela-sela transparan sekitar
+//    siluet mempelai, persis kayak dia ada di belakang mereka.
+//
+// Semua lapisan tetap dianchor ke titik zoom yang SAMA (ZOOM_BASE = zoom
+// waypoint "cover") supaya di framing cover semua lapisan tetap presisi
+// menyatu jadi satu gambar utuh — parallax-nya baru "terasa" begitu kamera
+// mulai zoom masuk, dan balik menyatu lagi begitu zoom out ke cover-out.
 //
 // STATUS: masih standalone, belum disambung ke SectionRenderer/template
 // system. Cek halaman tes di src/app/dev/infinite-zoom/page.tsx.
 //
-// CATATAN JUJUR soal kalibrasi kamera:
-// - Ground layer (gunung-kerinci, rumah-gadang-hero) sekarang SAMA-SAMA
-//   bottom-anchored (bottom-0, w-full) — bukan lagi pakai offset
-//   bottom-[30%] yang bikin gunung "mengambang" terpisah. Kedua aset itu
-//   memang didesain landscape lebar senada (rasio ~1.57), jadi cukup
-//   ditumpuk dari bawah dan komposisinya sudah menyatu dengan sendirinya.
-// - Asumsi kiri=mempelai wanita, kanan=mempelai pria di dalam foto hero.
-//   Kalau posisi aslinya kebalik, tinggal tukar cx pada waypoint
-//   bride-focus/bride-info dengan groom-focus/groom-info.
-// - Titik (cx, cy) & zoom di WAYPOINTS dikalibrasi visual untuk layar HP
-//   (~420px). Kalau ada kartu yang kepotong/nabrak, geser angkanya saja,
-//   tidak perlu ubah struktur.
-//
-// CATATAN JUJUR soal RSVP / Digital Gift / Wishes:
-// Masih bentuk visual + form standalone (belum tersambung ke API submit
-// asli). Sambungkan lewat prop `onSubmitRsvp`, atau ganti dengan
-// <SectionRenderer /> begitu sistem template sudah di-wire.
+// CATATAN JUJUR:
+// - Depth exponent per lapisan (lihat `DEPTH`) dikalibrasi rasa/visual,
+//   bukan hasil pengukuran fisik. Kalau efek parallax-nya kurang/kelewat
+//   kerasa di satu lapisan tertentu, cukup naik/turunkan angkanya sedikit
+//   (semakin jauh dari 1.0, semakin terasa "jauh"/"dekat" lapisan itu).
+// - Fade opacity dipatok segitiga PAS di breakpoint waypoint kartu itu.
+//   Kalau mau durasi "muncul penuh"-nya lebih lama (bukan sekejap), tinggal
+//   ganti array input `useTransform` di `useSectionOpacity` dari 3 titik
+//   jadi 4-5 titik dengan sedikit plateau di tengah.
+// - Asumsi kiri=mempelai wanita, kanan=mempelai pria di foto hero. Kartu
+//   akad sengaja digeser ke sisi kanan rumah (bukan tepat di atas foto)
+//   supaya tidak ketutup lapisan foto saat kamera zoom out lebar.
 // ---------------------------------------------------------------------------
 
 const ASSET = "/templates/luxury-parallax-minang";
 
-// Satuan kanvas bebas ("cu"), BUKAN pixel layar. Portrait — dekat rasio asli
-// sky.webp (1013x1800) supaya object-cover tidak banyak memotong.
+// Satuan kanvas bebas ("cu"), BUKAN pixel layar.
 const CANVAS = { width: 1000, height: 1800 };
+
+// Zoom di waypoint "cover" — jadi titik referensi tempat SEMUA lapisan
+// depth selalu presisi menyatu (lihat useDepthTransform).
+const ZOOM_BASE = 0.42;
+
+// Eksponen kedalaman per lapisan. 1.0 = lapisan referensi (rumah gadang).
+// <1 = lebih "jauh" dari kamera (zoom & geser lebih lambat).
+// >1 = lebih "dekat" dari kamera (zoom & geser lebih cepat/dramatis).
+const DEPTH = {
+  sky: 0.15,
+  clouds: 0.45,
+  mountain: 0.55,
+  behind: 0.85,
+  house: 1.0,
+  midContent: 1.08,
+  photo: 1.15,
+  gallery: 1.2,
+  trees: 1.35,
+};
 
 interface CameraWaypoint {
   id: string;
@@ -94,24 +112,24 @@ const RESEPSI_CLOUD = { file: "cloud-02.webp", cardCx: 780, cardCy: 230, style: 
 /** Bangun urutan waypoint kamera secara dinamis, tergantung jumlah acara & bab kisah cinta. */
 function buildWaypoints(eventsCount: number, storyCount: number): CameraWaypoint[] {
   const wps: CameraWaypoint[] = [
-    { id: "cover", cx: 500, cy: 900, zoom: 0.42 },
+    { id: "cover", cx: 500, cy: 900, zoom: ZOOM_BASE },
     { id: "opening", cx: OPENING_CLOUD.cardCx, cy: OPENING_CLOUD.cardCy, zoom: 1.55 },
-    { id: "hero-photo", cx: 500, cy: 1450, zoom: 1.45 },
+    { id: "hero-photo", cx: 500, cy: 1420, zoom: 1.4 },
     { id: "bride-focus", cx: 390, cy: 1380, zoom: 2.2 },
     { id: "bride-info", cx: 150, cy: 1380, zoom: 1.9 },
     { id: "mid-breather", cx: 500, cy: 1420, zoom: 1.3 },
     { id: "groom-focus", cx: 610, cy: 1380, zoom: 2.2 },
     { id: "groom-info", cx: 850, cy: 1380, zoom: 1.9 },
-    { id: "countdown", cx: 500, cy: 1050, zoom: 1.8 },
+    { id: "countdown", cx: 500, cy: 1300, zoom: 1.75 },
   ];
-  if (eventsCount > 0) wps.push({ id: "event-0", cx: 500, cy: 1280, zoom: 0.75 });
+  if (eventsCount > 0) wps.push({ id: "event-0", cx: 800, cy: 1550, zoom: 0.85 });
   if (eventsCount > 1) wps.push({ id: "event-1", cx: RESEPSI_CLOUD.cardCx, cy: RESEPSI_CLOUD.cardCy, zoom: 1.55 });
   const storySlots = STORY_CLOUD_SLOTS.slice(0, Math.min(storyCount, STORY_CLOUD_SLOTS.length));
   storySlots.forEach((slot, i) => {
     wps.push({ id: `love-story-${i}`, cx: slot.cardCx, cy: slot.cardCy, zoom: 1.55 });
   });
-  wps.push({ id: "gallery", cx: 250, cy: 1650, zoom: 1.55 });
-  wps.push({ id: "cover-out", cx: 500, cy: 900, zoom: 0.42 });
+  wps.push({ id: "gallery", cx: 280, cy: 1650, zoom: 1.55 });
+  wps.push({ id: "cover-out", cx: 500, cy: 900, zoom: ZOOM_BASE });
   return wps;
 }
 
@@ -234,15 +252,6 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
   const cyMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.cy));
   const zoomMV = useTransform(scrollYProgress, breakpoints, waypoints.map((w) => w.zoom));
 
-  const translateX = useTransform([cxMV, zoomMV], (v) => {
-    const [cx, zoom] = v as number[];
-    return `calc(50vw - ${cx * zoom}px)`;
-  });
-  const translateY = useTransform([cyMV, zoomMV], (v) => {
-    const [cy, zoom] = v as number[];
-    return `calc(50vh - ${cy * zoom}px)`;
-  });
-
   // Teks cover (eyebrow, judul, nama tamu) hanya kelihatan jelas saat di
   // waypoint "cover" & "cover-out" — cepat pudar begitu kamera mulai
   // bergerak, dan muncul lagi menjelang kamera kembali ke framing awal.
@@ -254,20 +263,15 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
       {/* --- Bagian 1: mural rumah gadang, scroll-jacked, n waypoint --- */}
       <div ref={containerRef} className="relative" style={{ height: `${n * 90}vh` }}>
         <div className="sticky top-0 h-screen w-full overflow-hidden bg-[#EFE7D2]">
-          <motion.div
-            className="absolute left-0 top-0"
-            style={{
-              width: CANVAS.width,
-              height: CANVAS.height,
-              x: translateX,
-              y: translateY,
-              scale: zoomMV,
-              transformOrigin: "0 0",
-            }}
-          >
-            <MinangMuralScene {...props} coverTextOpacity={coverTextOpacity} />
-          </motion.div>
-
+          <MinangMuralScene
+            {...props}
+            waypoints={waypoints}
+            scrollYProgress={scrollYProgress}
+            cxMV={cxMV}
+            cyMV={cyMV}
+            zoomMV={zoomMV}
+            coverTextOpacity={coverTextOpacity}
+          />
           <ScrollProgressHint progress={scrollYProgress} />
         </div>
       </div>
@@ -286,147 +290,306 @@ function ZoomExperience(props: InfiniteZoomInvitationProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Mural rumah gadang — SATU scene berisi semua layer + semua konten waypoint.
-// Kamera (parent motion.div) yang bergerak; DOM di sini diam di tempat.
+// Depth parallax — inti dari efek "3D berlapis". Setiap DepthLayer punya
+// kecepatan zoom/geser sendiri, relatif ke ZOOM_BASE, berdasarkan exponent
+// kedalamannya. Di ZOOM_BASE (waypoint cover), semua lapisan presisi sama
+// — parallax baru "muncul" begitu kamera zoom menyimpang dari ZOOM_BASE.
 // ---------------------------------------------------------------------------
 
-function MinangMuralScene({
-  guestName,
-  coupleNames,
-  coverEyebrow = "The Wedding of",
-  coverDateLabel,
-  couplePhotoUrl,
-  openingMessage,
-  bride,
-  groom,
-  events,
-  countdownTarget,
-  loveStory = [],
-  gallery = [],
-  coverTextOpacity,
-}: InfiniteZoomInvitationProps & { coverTextOpacity?: MotionValue<number> }) {
+function useDepthTransform(cxMV: MotionValue<number>, cyMV: MotionValue<number>, zoomMV: MotionValue<number>, depth: number) {
+  const layerZoomMV = useTransform(zoomMV, (z) => ZOOM_BASE * Math.pow(z / ZOOM_BASE, depth));
+  const x = useTransform([cxMV, layerZoomMV], (v) => {
+    const [cx, lz] = v as number[];
+    return `calc(50vw - ${cx * lz}px)`;
+  });
+  const y = useTransform([cyMV, layerZoomMV], (v) => {
+    const [cy, lz] = v as number[];
+    return `calc(50vh - ${cy * lz}px)`;
+  });
+  return { x, y, scale: layerZoomMV };
+}
+
+function DepthLayer({
+  depth,
+  zIndex,
+  cxMV,
+  cyMV,
+  zoomMV,
+  children,
+}: {
+  depth: number;
+  zIndex: number;
+  cxMV: MotionValue<number>;
+  cyMV: MotionValue<number>;
+  zoomMV: MotionValue<number>;
+  children: ReactNode;
+}) {
+  const { x, y, scale } = useDepthTransform(cxMV, cyMV, zoomMV, depth);
+  return (
+    <motion.div
+      className="absolute left-0 top-0"
+      style={{ width: CANVAS.width, height: CANVAS.height, x, y, scale, transformOrigin: "0 0", zIndex }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** Opacity segitiga (0 → 1 → 0) yang mekar tepat di breakpoint waypoint `id`. */
+function useSectionOpacity(scrollYProgress: MotionValue<number>, waypoints: CameraWaypoint[], id: string) {
+  const n = waypoints.length;
+  const rawIndex = waypoints.findIndex((w) => w.id === id);
+  const index = rawIndex >= 0 ? rawIndex : 0;
+  const bp = index / (n - 1);
+  const prev = index > 0 ? (index - 1) / (n - 1) : Math.max(0, bp - 0.001);
+  const next = index < n - 1 ? (index + 1) / (n - 1) : Math.min(1, bp + 0.001);
+  return useTransform(scrollYProgress, [prev, bp, next], [0, 1, 0]);
+}
+
+// ---------------------------------------------------------------------------
+// Mural rumah gadang — dipecah jadi beberapa DepthLayer (lihat DEPTH),
+// disusun dari yang paling jauh ke paling dekat supaya urutan tumpang-
+// tindihnya benar (layer belakangan digambar di atas layer sebelumnya).
+// ---------------------------------------------------------------------------
+
+interface MuralCameraProps {
+  waypoints: CameraWaypoint[];
+  scrollYProgress: MotionValue<number>;
+  cxMV: MotionValue<number>;
+  cyMV: MotionValue<number>;
+  zoomMV: MotionValue<number>;
+  coverTextOpacity: MotionValue<number>;
+}
+
+function MinangMuralScene(props: InfiniteZoomInvitationProps & MuralCameraProps) {
+  const {
+    guestName,
+    coupleNames,
+    coverEyebrow = "The Wedding of",
+    coverDateLabel,
+    couplePhotoUrl,
+    openingMessage,
+    bride,
+    groom,
+    events,
+    countdownTarget,
+    loveStory = [],
+    gallery = [],
+    waypoints,
+    scrollYProgress,
+    cxMV,
+    cyMV,
+    zoomMV,
+    coverTextOpacity,
+  } = props;
+
   const storySlots = STORY_CLOUD_SLOTS.slice(0, Math.min(loveStory.length, STORY_CLOUD_SLOTS.length));
   const akadEvent = events[0];
   const resepsiEvent = events[1];
 
+  const layer = (depth: number, zIndex: number, children: ReactNode) => (
+    <DepthLayer depth={depth} zIndex={zIndex} cxMV={cxMV} cyMV={cyMV} zoomMV={zoomMV}>
+      {children}
+    </DepthLayer>
+  );
+
+  const openingOpacity = useSectionOpacity(scrollYProgress, waypoints, "opening");
+  const heroPhotoOpacity = useSectionOpacity(scrollYProgress, waypoints, "hero-photo");
+  const brideInfoOpacity = useSectionOpacity(scrollYProgress, waypoints, "bride-info");
+  const groomInfoOpacity = useSectionOpacity(scrollYProgress, waypoints, "groom-info");
+  const countdownOpacity = useSectionOpacity(scrollYProgress, waypoints, "countdown");
+  const event0Opacity = useSectionOpacity(scrollYProgress, waypoints, "event-0");
+  const event1Opacity = useSectionOpacity(scrollYProgress, waypoints, "event-1");
+  const galleryOpacity = useSectionOpacity(scrollYProgress, waypoints, "gallery");
+  // Awan kisah cinta maksimal 4 — dipanggil tetap 4x (bukan di dalam .map)
+  // supaya jumlah pemanggilan hook selalu konsisten antar-render.
+  const loveStoryOpacities = [
+    useSectionOpacity(scrollYProgress, waypoints, "love-story-0"),
+    useSectionOpacity(scrollYProgress, waypoints, "love-story-1"),
+    useSectionOpacity(scrollYProgress, waypoints, "love-story-2"),
+    useSectionOpacity(scrollYProgress, waypoints, "love-story-3"),
+  ];
+
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      {/* --- Langit --- */}
-      {/* eslint-disable @next/next/no-img-element */}
-      <img src={`${ASSET}/sky.webp`} alt="" className="absolute inset-0 h-full w-full object-cover" />
+    <div className="relative h-full w-full overflow-hidden bg-[#EFE7D2]">
+      {/* --- Lapisan 1: langit — paling jauh, hampir diam --- */}
+      {layer(
+        DEPTH.sky,
+        0,
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={`${ASSET}/sky.webp`} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      )}
 
-      {/* --- Awan pesan pembuka --- */}
-      <CloudDecoration file={OPENING_CLOUD.file} style={OPENING_CLOUD.style} />
+      {/* --- Lapisan 2: awan + kartu pesan pembuka, resepsi, kisah cinta --- */}
+      {layer(
+        DEPTH.clouds,
+        10,
+        <>
+          <CloudDecoration file={OPENING_CLOUD.file} style={OPENING_CLOUD.style} />
+          {resepsiEvent ? <CloudDecoration file={RESEPSI_CLOUD.file} style={RESEPSI_CLOUD.style} /> : null}
+          {storySlots.map((slot, i) => (
+            <CloudDecoration key={i} file={slot.file} style={slot.style} mirror={slot.mirror} />
+          ))}
 
-      {/* --- Awan resepsi (kalau ada acara ke-2) --- */}
-      {resepsiEvent ? <CloudDecoration file={RESEPSI_CLOUD.file} style={RESEPSI_CLOUD.style} /> : null}
+          <Positioned cx={OPENING_CLOUD.cardCx} cy={OPENING_CLOUD.cardCy} width={420} opacity={openingOpacity}>
+            <OpeningCardContent openingMessage={openingMessage} />
+          </Positioned>
 
-      {/* --- Awan kisah cinta, satu per bab --- */}
-      {storySlots.map((slot, i) => (
-        <CloudDecoration key={i} file={slot.file} style={slot.style} mirror={slot.mirror} />
-      ))}
+          {resepsiEvent ? (
+            <Positioned cx={RESEPSI_CLOUD.cardCx} cy={RESEPSI_CLOUD.cardCy} width={360} opacity={event1Opacity}>
+              <EventCardContent event={resepsiEvent} />
+            </Positioned>
+          ) : null}
 
-      {/* --- Tanah: gunung, rumah gadang, foto mempelai, pohon — semua bottom-anchored jadi satu gambar utuh --- */}
-      <img src={`${ASSET}/gunung-kerinci.webp`} alt="" className="absolute bottom-0 left-0 w-full" />
-      <img src={`${ASSET}/rumah-gadang-hero.webp`} alt="" className="absolute bottom-0 left-[7.5%] w-[85%]" />
-      <img
-        src={couplePhotoUrl}
-        alt=""
-        className="absolute bottom-0 left-1/2 w-[46%] -translate-x-1/2 drop-shadow-[0_18px_28px_rgba(0,0,0,0.35)]"
-      />
-      <img src={`${ASSET}/pohon-01.webp`} alt="" className="absolute bottom-0 left-[-3%] w-[24%]" />
-      <img src={`${ASSET}/pohon-02.webp`} alt="" className="absolute bottom-0 right-[-3%] w-[26%]" />
-      <img src={`${ASSET}/top-ornament.webp`} alt="" className="absolute top-0 left-0 w-full" />
-      {/* eslint-enable @next/next/no-img-element */}
+          {storySlots.map((slot, i) => (
+            <Positioned key={i} cx={slot.cardCx} cy={slot.cardCy} width={320} opacity={loveStoryOpacities[i]}>
+              <LoveStoryCardContent chapter={loveStory[i]} />
+            </Positioned>
+          ))}
+        </>
+      )}
 
-      {/* --- Teks cover: eyebrow atas + judul, tanggal, nama tamu bawah --- */}
-      <motion.div className="absolute top-[7%] w-full text-center" style={{ opacity: coverTextOpacity ?? 1 }}>
-        <p className="font-theme-body text-[11px] uppercase tracking-[0.4em] text-[#EEDFBE]/90">{coverEyebrow}</p>
-      </motion.div>
-      <motion.div className="absolute top-[52%] w-full text-center" style={{ opacity: coverTextOpacity ?? 1 }}>
-        <h1 className="font-theme-heading text-2xl text-[#FFFDF8]" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
-          {coupleNames}
-        </h1>
-        {coverDateLabel ? <p className="mt-1 font-theme-body text-xs text-[#EEDFBE]/85">{coverDateLabel}</p> : null}
-        {guestName ? (
-          <p className="mt-2 inline-block rounded-full bg-black/25 px-4 py-1 font-theme-body text-xs text-[#FFFDF8] backdrop-blur-sm">
-            Kepada Yth. {guestName}
-          </p>
-        ) : null}
-      </motion.div>
+      {/* --- Lapisan 3: gunung — jauh, di belakang rumah gadang --- */}
+      {layer(
+        DEPTH.mountain,
+        20,
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={`${ASSET}/gunung-kerinci.webp`} alt="" className="absolute bottom-0 left-0 w-full" />
+      )}
 
-      {/* --- Waypoint: pesan pembuka --- */}
-      <Positioned cx={OPENING_CLOUD.cardCx} cy={OPENING_CLOUD.cardCy} width={420}>
-        <OpeningCardContent openingMessage={openingMessage} />
-      </Positioned>
-
-      {/* --- Waypoint: caption kecil di foto hero --- */}
-      <Positioned cx={500} cy={1730} width={320}>
-        <p className="text-center font-theme-heading text-lg italic text-[#FFFDF8]" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
-          {coupleNames}
-        </p>
-      </Positioned>
-
-      {/* --- Waypoint: info mempelai wanita --- */}
-      <Positioned cx={150} cy={1380} width={260}>
-        <PersonInfoCard person={bride} roleLabel="Mempelai Wanita" />
-      </Positioned>
-
-      {/* --- Waypoint: info mempelai pria --- */}
-      <Positioned cx={850} cy={1380} width={260}>
-        <PersonInfoCard person={groom} roleLabel="Mempelai Pria" />
-      </Positioned>
-
-      {/* --- Waypoint: countdown, "di belakang" mempelai --- */}
+      {/* --- Lapisan 4: countdown — SENGAJA di lapisan lebih "jauh" dari foto mempelai, digambar SEBELUM lapisan foto supaya benar-benar tertutup dari depan --- */}
       {countdownTarget ? (
-        <Positioned cx={500} cy={1050} width={300}>
-          <CountdownCardContent target={countdownTarget} />
-        </Positioned>
+        layer(
+          DEPTH.behind,
+          30,
+          <Positioned cx={500} cy={1300} width={300} opacity={countdownOpacity}>
+            <CountdownCardContent target={countdownTarget} />
+          </Positioned>
+        )
       ) : null}
 
-      {/* --- Waypoint: detail akad, zoom out agak jauh --- */}
-      {akadEvent ? (
-        <Positioned cx={500} cy={1280} width={420}>
-          <EventCardContent event={akadEvent} />
-        </Positioned>
-      ) : null}
+      {/* --- Lapisan 5: rumah gadang + teks cover + kartu akad --- */}
+      {layer(
+        DEPTH.house,
+        40,
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${ASSET}/rumah-gadang-hero.webp`} alt="" className="absolute bottom-0 left-[7.5%] w-[85%]" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${ASSET}/top-ornament.webp`} alt="" className="absolute top-0 left-0 w-full" />
 
-      {/* --- Waypoint: detail resepsi, di awan --- */}
-      {resepsiEvent ? (
-        <Positioned cx={RESEPSI_CLOUD.cardCx} cy={RESEPSI_CLOUD.cardCy} width={360}>
-          <EventCardContent event={resepsiEvent} />
-        </Positioned>
-      ) : null}
+          <motion.div className="absolute top-[7%] w-full text-center" style={{ opacity: coverTextOpacity }}>
+            <p className="font-theme-body text-[11px] uppercase tracking-[0.4em] text-[#EEDFBE]/90">{coverEyebrow}</p>
+          </motion.div>
+          <motion.div className="absolute top-[52%] w-full text-center" style={{ opacity: coverTextOpacity }}>
+            <h1 className="font-theme-heading text-2xl text-[#FFFDF8]" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
+              {coupleNames}
+            </h1>
+            {coverDateLabel ? <p className="mt-1 font-theme-body text-xs text-[#EEDFBE]/85">{coverDateLabel}</p> : null}
+            {guestName ? (
+              <p className="mt-2 inline-block rounded-full bg-black/25 px-4 py-1 font-theme-body text-xs text-[#FFFDF8] backdrop-blur-sm">
+                Kepada Yth. {guestName}
+              </p>
+            ) : null}
+          </motion.div>
 
-      {/* --- Waypoint: kisah cinta, satu kartu per awan --- */}
-      {storySlots.map((slot, i) => (
-        <Positioned key={i} cx={slot.cardCx} cy={slot.cardCy} width={320}>
-          <LoveStoryCardContent chapter={loveStory[i]} />
-        </Positioned>
-      ))}
+          {akadEvent ? (
+            <Positioned cx={800} cy={1550} width={380} opacity={event0Opacity}>
+              <EventCardContent event={akadEvent} />
+            </Positioned>
+          ) : null}
+        </>
+      )}
 
-      {/* --- Waypoint: galeri foto, depan rumah gadang, agak nyamping --- */}
-      {gallery.length > 0 ? (
-        <Positioned cx={250} cy={1650} width={340}>
-          <GalleryCardContent photos={gallery} coupleNames={coupleNames} />
-        </Positioned>
-      ) : null}
+      {/* --- Lapisan 6: info mempelai — melayang sedikit di depan dinding rumah --- */}
+      {layer(
+        DEPTH.midContent,
+        50,
+        <>
+          <Positioned cx={150} cy={1380} width={260} opacity={brideInfoOpacity}>
+            <PersonInfoCard person={bride} roleLabel="Mempelai Wanita" />
+          </Positioned>
+          <Positioned cx={850} cy={1380} width={260} opacity={groomInfoOpacity}>
+            <PersonInfoCard person={groom} roleLabel="Mempelai Pria" />
+          </Positioned>
+        </>
+      )}
+
+      {/* --- Lapisan 7: foto mempelai — PNG transparan, tanpa frame, berdiri di depan rumah gadang --- */}
+      {layer(
+        DEPTH.photo,
+        60,
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={couplePhotoUrl}
+            alt=""
+            className="absolute bottom-0 left-1/2 w-[46%] -translate-x-1/2 drop-shadow-[0_18px_28px_rgba(0,0,0,0.35)]"
+          />
+          <Positioned cx={500} cy={1730} width={320} opacity={heroPhotoOpacity}>
+            <p className="text-center font-theme-heading text-lg italic text-[#FFFDF8]" style={{ textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
+              {coupleNames}
+            </p>
+          </Positioned>
+        </>
+      )}
+
+      {/* --- Lapisan 8: galeri foto — depan rumah gadang, agak nyamping --- */}
+      {gallery.length > 0
+        ? layer(
+            DEPTH.gallery,
+            65,
+            <Positioned cx={280} cy={1650} width={340} opacity={galleryOpacity}>
+              <GalleryCardContent photos={gallery} coupleNames={coupleNames} />
+            </Positioned>
+          )
+        : null}
+
+      {/* --- Lapisan 9: pohon — paling dekat, foreground, gerak paling cepat --- */}
+      {layer(
+        DEPTH.trees,
+        70,
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${ASSET}/pohon-01.webp`} alt="" className="absolute bottom-0 left-[-3%] w-[24%]" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${ASSET}/pohon-02.webp`} alt="" className="absolute bottom-0 right-[-3%] w-[26%]" />
+        </>
+      )}
     </div>
   );
 }
 
-/** Elemen konten yang dipatok di titik (cx, cy) kanvas, center-anchored. */
-function Positioned({ cx, cy, width, children }: { cx: number; cy: number; width: number; children: ReactNode }) {
+/** Elemen konten yang dipatok di titik (cx, cy) kanvas, center-anchored. Opacity opsional untuk efek fade-in/fade-out. */
+function Positioned({
+  cx,
+  cy,
+  width,
+  opacity,
+  children,
+}: {
+  cx: number;
+  cy: number;
+  width: number;
+  opacity?: MotionValue<number>;
+  children: ReactNode;
+}) {
+  const positionStyle = {
+    left: `${(cx / CANVAS.width) * 100}%`,
+    top: `${(cy / CANVAS.height) * 100}%`,
+    width: `${(width / CANVAS.width) * 100}%`,
+    transform: "translate(-50%, -50%)",
+  };
+
+  if (opacity) {
+    return (
+      <motion.div className="absolute" style={{ ...positionStyle, opacity }}>
+        {children}
+      </motion.div>
+    );
+  }
   return (
-    <div
-      className="absolute"
-      style={{
-        left: `${(cx / CANVAS.width) * 100}%`,
-        top: `${(cy / CANVAS.height) * 100}%`,
-        width: `${(width / CANVAS.width) * 100}%`,
-        transform: "translate(-50%, -50%)",
-      }}
-    >
+    <div className="absolute" style={positionStyle}>
       {children}
     </div>
   );
@@ -476,9 +639,9 @@ function SongketDivider({ flipped = false }: { flipped?: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// Konten kartu "murni" (tanpa positioning) — dipakai DI DALAM mural lewat
-// <Positioned>, dan dipakai lagi apa adanya di fallback statis lewat <div>
-// biasa. Supaya isinya konsisten di kedua mode tanpa duplikasi.
+// Konten kartu "murni" (tanpa positioning/opacity) — dipakai DI DALAM mural
+// lewat <Positioned>, dan dipakai lagi apa adanya di fallback statis lewat
+// <div> biasa. Supaya isinya konsisten di kedua mode tanpa duplikasi.
 // ---------------------------------------------------------------------------
 
 function OpeningCardContent({ openingMessage }: { openingMessage: { eyebrow?: string; body: string } }) {
@@ -722,25 +885,82 @@ function FooterSection({ footer }: { footer: { coupleNames: string; dateLabel?: 
 }
 
 // ---------------------------------------------------------------------------
-// Fallback non-animasi untuk `prefers-reduced-motion` — cover statis (mural
-// tanpa scroll-jacking) lalu semua konten yang tadinya "tersembunyi" di
-// waypoint kamera ditampilkan berurutan sebagai stack section biasa, pakai
-// komponen konten "murni" yang sama supaya isinya tetap konsisten.
+// Fallback non-animasi untuk `prefers-reduced-motion` — cover statis (tanpa
+// depth-layer/scroll-jacking sama sekali, cukup gambar biasa ditumpuk) lalu
+// semua konten yang tadinya "tersembunyi" di waypoint kamera ditampilkan
+// berurutan sebagai stack section biasa, pakai komponen konten "murni" yang
+// sama supaya isinya tetap konsisten dengan mode animasi.
 // ---------------------------------------------------------------------------
 
+function StaticMuralSnapshot({
+  couplePhotoUrl,
+  guestName,
+  coupleNames,
+  coverEyebrow = "The Wedding of",
+  coverDateLabel,
+}: {
+  couplePhotoUrl: string;
+  guestName?: string;
+  coupleNames: string;
+  coverEyebrow?: string;
+  coverDateLabel?: string;
+}) {
+  return (
+    <div className="relative h-full w-full overflow-hidden bg-[#EFE7D2]">
+      {/* eslint-disable @next/next/no-img-element */}
+      <img src={`${ASSET}/sky.webp`} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <img src={`${ASSET}/gunung-kerinci.webp`} alt="" className="absolute bottom-0 left-0 w-full" />
+      <img src={`${ASSET}/rumah-gadang-hero.webp`} alt="" className="absolute bottom-0 left-[7.5%] w-[85%]" />
+      <img src={couplePhotoUrl} alt="" className="absolute bottom-0 left-1/2 w-[46%] -translate-x-1/2" />
+      <img src={`${ASSET}/pohon-01.webp`} alt="" className="absolute bottom-0 left-[-3%] w-[24%]" />
+      <img src={`${ASSET}/pohon-02.webp`} alt="" className="absolute bottom-0 right-[-3%] w-[26%]" />
+      <img src={`${ASSET}/top-ornament.webp`} alt="" className="absolute top-0 left-0 w-full" />
+      {/* eslint-enable @next/next/no-img-element */}
+
+      <div className="absolute top-[7%] w-full text-center">
+        <p className="font-theme-body text-[11px] uppercase tracking-[0.4em] text-[#EEDFBE]/90">{coverEyebrow}</p>
+      </div>
+      <div className="absolute top-[52%] w-full text-center">
+        <h1 className="font-theme-heading text-2xl text-[#FFFDF8]" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
+          {coupleNames}
+        </h1>
+        {coverDateLabel ? <p className="mt-1 font-theme-body text-xs text-[#EEDFBE]/85">{coverDateLabel}</p> : null}
+        {guestName ? (
+          <p className="mt-2 inline-block rounded-full bg-black/25 px-4 py-1 font-theme-body text-xs text-[#FFFDF8] backdrop-blur-sm">
+            Kepada Yth. {guestName}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function StaticFallback(props: InfiniteZoomInvitationProps) {
-  const { guestName, coupleNames, coverEyebrow = "The Wedding of", coverDateLabel, openingMessage, bride, groom, events, countdownTarget, loveStory = [], gallery = [] } = props;
+  const {
+    guestName,
+    coupleNames,
+    coverEyebrow = "The Wedding of",
+    coverDateLabel,
+    couplePhotoUrl,
+    openingMessage,
+    bride,
+    groom,
+    events,
+    countdownTarget,
+    loveStory = [],
+    gallery = [],
+  } = props;
 
   return (
     <div className="bg-theme-bg">
       <div className="relative aspect-[10/18] w-full max-w-sm mx-auto overflow-hidden">
-        <MinangMuralScene {...props} />
-      </div>
-      <div className="px-6 py-8 text-center">
-        <p className="font-theme-body text-[11px] uppercase tracking-[0.4em] text-theme-muted">{coverEyebrow}</p>
-        <h1 className="mt-2 font-theme-heading text-2xl text-theme-primary">{coupleNames}</h1>
-        {coverDateLabel ? <p className="mt-1 font-theme-body text-xs text-theme-muted">{coverDateLabel}</p> : null}
-        {guestName ? <p className="mt-1 font-theme-body text-xs text-theme-muted">Kepada Yth. {guestName}</p> : null}
+        <StaticMuralSnapshot
+          couplePhotoUrl={couplePhotoUrl}
+          guestName={guestName}
+          coupleNames={coupleNames}
+          coverEyebrow={coverEyebrow}
+          coverDateLabel={coverDateLabel}
+        />
       </div>
 
       <SongketDivider />
